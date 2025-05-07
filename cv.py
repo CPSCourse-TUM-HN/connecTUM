@@ -1,50 +1,103 @@
 import cv2
 import numpy as np
 
-def extract_board_state(image_path):
-    img = cv2.imread(image_path)
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = cv2.medianBlur(gray, 5)
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp=1.2, minDist=40,
-                               param1=50, param2=30, minRadius=20, maxRadius=40)
+# Read the image
+image = cv2.imread('try.jpg')
+if image is None:
+    print("Error: Image not found or path is incorrect.")
+    exit(1)
 
-    board_state = np.zeros((6, 7), dtype=int)  # 0: empty, 1: red, 2: yellow
+def detect_and_map(mask, value, minRadius, maxRadius):
+    blurred = cv2.GaussianBlur(mask, (9, 9), 2)
+    circles = cv2.HoughCircles(
+        blurred,
+        cv2.HOUGH_GRADIENT,
+        dp=1,
+        minDist=20,
+        param1=50,
+        param2=28,
+        minRadius=minRadius,
+        maxRadius=maxRadius
+    )
+    if circles is not None and len(circles) > 0:
+        circles = np.uint16(np.around(circles))
+        for x, y, _ in circles[0]:
+            # Draw a cross at (x, y)
+            cross_size = 5
+            color = (0, 255, 0)
+            thickness = 1
+            cv2.line(image, (x - cross_size, y), (x + cross_size, y), color, thickness)
+            cv2.line(image, (x, y - cross_size), (x, y + cross_size), color, thickness)
 
-    if circles is not None:
-        circles = np.round(circles[0, :]).astype("int")
-        # Sort circles by y, then x to map to board
-        circles = sorted(circles, key=lambda c: (c[1], c[0]))
-        # Group circles into rows
-        rows = [[] for _ in range(6)]
-        y_positions = sorted(list(set([c[1] for c in circles])))
-        for c in circles:
-            # Find closest row by y
-            row_idx = min(range(6), key=lambda i: abs(c[1] - y_positions[i]))
-            rows[row_idx].append(c)
-        # Sort each row by x and fill board_state
-        for row_idx, row in enumerate(rows):
-            row = sorted(row, key=lambda c: c[0])
-            for col_idx, (x, y, r) in enumerate(row):
-                mask = np.zeros(gray.shape, dtype=np.uint8)
-                cv2.circle(mask, (x, y), r-5, 255, -1)
-                mean = cv2.mean(hsv, mask=mask)
-                h, s, v = mean[:3]
-                # Red detection (handle hue wrap-around)
-                is_red = ((h < 10 or h > 160) and s > 100 and v > 50)
-                # Yellow detection
-                is_yellow = (20 < h < 40 and s > 100 and v > 50)
-                if is_red:
-                    val = 1
-                elif is_yellow:
-                    val = 2
-                else:
-                    val = 0
-                if row_idx < 6 and col_idx < 7:
-                    board_state[row_idx, col_idx] = val
+            col = int(round((x - x_min) / cell_w))
+            row = int(round((y - y_min) / cell_h))
+            col = min(max(col, 0), cols - 1)
+            row = min(max(row, 0), rows - 1)
+            if row < rows:
+                grid[row, col] = value
 
-    return board_state
+hsvFrame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-if __name__ == "__main__":
-    board = extract_board_state('try.jpg')
-    print(board)
+# Color ranges
+red_lower = np.array([136, 87, 111], np.uint8)
+red_upper = np.array([180, 255, 255], np.uint8)
+yellow_lower = np.array([20, 100, 100], np.uint8)
+yellow_upper = np.array([30, 255, 255], np.uint8)
+
+# Masks
+red_mask = cv2.inRange(hsvFrame, red_lower, red_upper)
+yellow_mask = cv2.inRange(hsvFrame, yellow_lower, yellow_upper)
+
+kernel = np.ones((5, 5), "uint8")
+red_mask = cv2.dilate(red_mask, kernel)
+yellow_mask = cv2.dilate(yellow_mask, kernel)
+
+gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+edged = cv2.Canny(gray, 30, 200)
+contours, hierarchy = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+all_points = []
+for cnt in contours:
+    approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
+    n = approx.ravel()
+    for i in range(0, len(n), 2):
+        all_points.append((n[i], n[i+1]))
+    cv2.drawContours(image, [approx], 0, (0, 0, 255), 5)
+
+if all_points:
+    xs, ys = zip(*all_points)
+    x_min, x_max = min(xs), max(xs)
+    y_min, y_max = min(ys), max(ys)
+    print(f"Detected grid boundaries: x_min={x_min}, y_min={y_min}, x_max={x_max}, y_max={y_max}")
+    cross_size = 5
+    color = (0, 255, 0)
+    thickness = 1
+    cv2.line(image, (x_min - cross_size, y_min), (x_min + cross_size, y_min), color, thickness)
+    cv2.line(image, (x_min, y_min - cross_size), (x_min, y_min + cross_size), color, thickness)
+    cv2.line(image, (x_min + 35 - cross_size, y_min), (x_min + cross_size + 35, y_min), color, thickness)
+    cv2.line(image, (x_min + 35, y_min - cross_size), (x_min + 35, y_min + cross_size), color, thickness)
+
+    # Calculate diagonal distance for radius scaling
+    distance = np.hypot(x_max - x_min, y_max - y_min)
+    minRadius = int(distance * 0.005)
+    maxRadius = int(distance * 0.2)
+    print(f"minRadius={minRadius}, maxRadius={maxRadius}")
+
+
+    # Grid setup
+    rows, cols = 6, 7
+    cell_w = (x_max - x_min) / (cols - 1)
+    cell_h = (y_max - y_min) / (rows - 1)
+    grid = np.zeros((rows, cols), dtype=int)
+
+    # Detect and map red (1) and yellow (2) circles
+    detect_and_map(red_mask, 1, minRadius, maxRadius)
+    detect_and_map(yellow_mask, 2, minRadius, maxRadius)
+
+    print(grid)
+else:
+    print("No corners detected. Cannot compute grid boundaries.")
+
+cv2.imshow('Andrea', image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
