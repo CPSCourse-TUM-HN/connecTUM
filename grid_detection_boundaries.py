@@ -148,8 +148,8 @@ while(1):
 		print("No corners detected. Cannot compute grid boundaries.")
 
 	cv2.imshow('ConnecTUM', image)
-	cv2.imshow('Red Mask', red_mask)
-	cv2.imshow('Yellow Mask', yellow_mask)
+	# cv2.imshow('Red Mask', red_mask)
+	# cv2.imshow('Yellow Mask', yellow_mask)
 
 	if cv2.waitKey(10) & 0xFF == ord('q'):
 		webcam.release()
