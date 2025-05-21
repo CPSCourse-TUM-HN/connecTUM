@@ -1,14 +1,17 @@
 # code from https://roboticsproject.readthedocs.io/en/latest/ConnectFourAlgorithm.html
+import math
 import random
-
 import numpy as np
+
+from connect4 import Position, Solver
 
 ROW_COUNT = 6
 COLUMN_COUNT = 7
-WINDOW_LENGTH = 5
-PLAYER_PIECE = 1
-BOT_PIECE = 2
+WINDOW_LENGTH = 4
+PLAYER_PIECE = -1
+BOT_PIECE = 1
 EMPTY = 0
+
 
 
 def create_board():
@@ -23,16 +26,17 @@ def pretty_print_board(board):
         row_str = ""
 
         for j in i:
-            if j == 1:
+            if j == BOT_PIECE:
                 #print(yellow)
                 row_str +="\033[0;37;43m 1 "
-            elif j ==2:
+            elif j ==PLAYER_PIECE:
                 row_str +="\033[0;37;44m 2 "
             else:
                 #print black
                 row_str +="\033[0;37;45m   "
 
         print(row_str+"\033[0m")
+    print("\033[0;37;41m 0 \033[0;37;41m 1 \033[0;37;41m 2 \033[0;37;41m 3 \033[0;37;41m 4 \033[0;37;41m 5 \033[0;37;41m 6 \033[0m")
 
 def get_valid_locations(board):
     valid_locations = []
@@ -214,10 +218,47 @@ def play_turn(board, col, piece):
             return True  # Game over
     return False  # Game continues
 
+def easy_play(board):
+    col, _ = minimax(board, 2, -9999999, 9999999, True)
+    return col
+
+def medium_play(board):
+    col, _ = minimax(board, 3, -9999999, 9999999, True)
+    return col
+
+def hard_play(board):
+    col, _ = minimax(board, 4, -9999999, 9999999, True)
+    return col
+
+def optimal_play(board):
+    """
+    :param board:
+        Ensure that BOT_PIECE = 1 and PLAYER_PIECE = -1
+        Currently only supports WINDOW_LENGTH = 4
+    :return:
+        Optimal column to play
+    """
+    if np.sum(board != 0) < 6: # If less than <n> moves have been played, resort to hard_play to ease search tree
+        return hard_play(board)
+    else:
+        position = Position(board)
+        solver = Solver()
+        scores = solver.analyze(position, False)
+        print(scores) # TODO For debugging, remove later
+        col = scores.index(max(scores))
+        return col
+
 def play_game():
     board = create_board()
     game_over = False
     turn = 0  # 0: Player, 1: Bot
+    play_alg = {
+        'easy': easy_play,
+        'medium': medium_play,
+        'hard': hard_play,
+        'impossible': optimal_play,
+    }
+    mode = 'hard'
 
     while not game_over:
         pretty_print_board(board)
@@ -234,7 +275,7 @@ def play_game():
                     print("Please enter a valid integer between 0 and 6.")
             game_over = play_turn(board, col, PLAYER_PIECE)
         else:
-            col, _ = minimax(board, 4, -9999999, 9999999, True)
+            col = play_alg[mode](board)
             game_over = play_turn(board, col, BOT_PIECE)
         if len(get_valid_locations(board)) == 0 and not game_over:
             pretty_print_board(board)
