@@ -90,7 +90,7 @@ while(1):
 	yellow_mask = cv2.dilate(yellow_mask, kernel)
 	blue_mask = cv2.dilate(blue_mask, kernel)
 
-	contours, hierarchy = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+	contours, _ = cv2.findContours(blue_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 	all_points = []
 	# Going through every contours found in the image. 
@@ -148,7 +148,7 @@ while(1):
 		print("No corners detected. Cannot compute grid boundaries.")
 
 	cv2.imshow('ConnecTUM', image)
-	# cv2.imshow('Red Mask', red_mask)
+	cv2.imshow('Blue Mask', blue_mask)
 	# cv2.imshow('Yellow Mask', yellow_mask)
 
 	if cv2.waitKey(10) & 0xFF == ord('q'):

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import math
 
 # Read the image
 # image = cv2.imread('try.jpg')
@@ -9,11 +10,11 @@ def detect_and_map(mask, value, minRadius, maxRadius):
 	blurred = cv2.GaussianBlur(mask, (9, 9), 2)
 	circles = cv2.HoughCircles(
 		blurred,
-		cv2.HOUGH_GRADIENT,
-		dp=1,
+		cv2.HOUGH_GRADIENT_ALT,
+		dp=1.5,
 		minDist=20,
-		param1=50,
-		param2=28,
+		param1=300,
+		param2=0.9,
 		minRadius=minRadius,
 		maxRadius=maxRadius
 	)
@@ -28,10 +29,14 @@ def detect_and_map(mask, value, minRadius, maxRadius):
 			cv2.line(image, (x - cross_size, y), (x + cross_size, y), color, thickness)
 			cv2.line(image, (x, y - cross_size), (x, y + cross_size), color, thickness)
 
-			col = int(round((x - x_min) / cell_w))
-			row = int(round((y - y_min) / cell_h))
-			col = min(max(col, 0), cols - 1)
-			row = min(max(row, 0), rows - 1)
+			col = (x - x_min) / cell_w
+			row = (y - y_min) / cell_h
+
+			if not isinstance(col, float) or not isinstance(row, float):
+				return
+			
+			col = min(max(int(round(col)), 0), cols - 1)
+			row = min(max(int(round(row)), 0), rows - 1)
 			if row < rows:
 				grid[row, col] = value
 
@@ -101,13 +106,14 @@ while(1):
 		minDist=20,
 		param1=50,
 		param2=28,
-		minRadius=5,
+		minRadius=10,
    		maxRadius=40
 	)
 
 	if circles is not None and len(circles) > 0:
 		circles = np.uint16(np.around(circles))
 		for (x, y, r) in circles[0]:
+			cv2.circle(image, (x, y), r, (255, 0, 255), 2)
 
 			if (x + y) < (min_circle[0] + min_circle[1]):
 				min_circle = (x, y)
@@ -145,8 +151,8 @@ while(1):
 		print("No corners detected. Cannot compute grid boundaries.")
 
 	cv2.imshow('ConnecTUM', image)
-	# cv2.imshow('Red Mask', red_mask)
-	# cv2.imshow('Yellow Mask', yellow_mask)
+	cv2.imshow('Red Mask', red_mask)
+	cv2.imshow('Yellow Mask', yellow_mask)
 	cv2.imshow('Blue Mask', blue_mask)
 
 	if cv2.waitKey(10) & 0xFF == ord('q'):
