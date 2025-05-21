@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 import math
 
-# Read the image
-webcam = cv2.VideoCapture(1)
+BUILT_IN_WEBCAM = 0
+EXTERNAL_WEBCAM = 1
 
 BOARD_WIDTH = 189
 BOARD_HEIGHT = 139
@@ -12,7 +12,15 @@ PADDING_TOP = 7
 PADDING_SIDE = 7.75
 DESCALE_FACTOR = 1.5
 
+frame_count = 0
+grid = np.zeros((6, 7), dtype=int)
+
+# Read the image
+webcam = cv2.VideoCapture(BUILT_IN_WEBCAM)
+
 def detect_and_map(mask, value, minRadius, maxRadius):
+	global grid
+
 	blurred = cv2.GaussianBlur(mask, (9, 9), 2)
 	# cv2.imshow('Blurred', blurred)
 	circles = cv2.HoughCircles(
@@ -43,7 +51,7 @@ def detect_and_map(mask, value, minRadius, maxRadius):
 			row = min(max(row, 0), rows - 1)
 
 			if row < rows:
-				grid[row, col] = value
+				grid[row][col] = grid[row][col] + value
 
 def print_grid(array):
 	rows, cols = len(array), len(array[0])
@@ -71,7 +79,30 @@ def print_grid(array):
 			# Optional: Draw border
 			cv2.circle(image, (cx, cy), radius, (0, 0, 0), 2)
 	
+	# print(grid)
 	cv2.imshow('Grid', image)
+
+def grid_accumulator(max_frame, success_rate):
+	global frame_count, grid
+
+	if frame_count < max_frame:
+		frame_count += 1
+		return grid
+	
+	rows, cols = len(grid), len(grid[0])
+	computed_grid = np.zeros((rows, cols), dtype=int)
+
+	for i in range(rows):
+		for j in range(cols):
+			if (abs(grid[i][j]) >= max_frame*success_rate):
+				computed_grid[i][j] = 1 if grid[i][j] < 0 else 2
+
+	frame_count = 0
+	grid = np.zeros((6, 7), dtype=int)
+	print_grid(computed_grid)
+	# print(computed_grid)
+	return computed_grid
+
 
 # Color ranges
 red_lower = np.array([150, 95, 95], np.uint8)
@@ -85,13 +116,14 @@ while(1):
 	# image = cv2.imread('try_irl.jpg')
 	_, image = webcam.read()
 	h, w, _ = image.shape
+	frame_count += 1
 	scale_ratio = math.floor(h / BOARD_HEIGHT) - DESCALE_FACTOR
 
 	if image is None:
 		print("Error: Image not found or path is incorrect.")
 		exit(1)
 
-	# image = cv2.flip(image, 1)
+	image = cv2.flip(image, 1)
 	hsvFrame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
 	# Masks
@@ -114,11 +146,11 @@ while(1):
 	rows, cols = 6, 7
 	cell_w = (x_max - x_min) / (cols - 1)
 	cell_h = (y_max - y_min) / (rows - 1)
-	grid = np.zeros((rows, cols), dtype=int)
 
 	# Detect and map red (1) and yellow (2) circles
-	detect_and_map(red_mask, 1, round(CIRCLE_RADIUS*scale_ratio) - 10,  round(CIRCLE_RADIUS*scale_ratio) + 10)
-	detect_and_map(yellow_mask, 2, round(CIRCLE_RADIUS*scale_ratio) - 10,  round(CIRCLE_RADIUS*scale_ratio) + 10)
+	detect_and_map(red_mask, -1, round(CIRCLE_RADIUS*scale_ratio) - 10,  round(CIRCLE_RADIUS*scale_ratio) + 10)
+	detect_and_map(yellow_mask, 1, round(CIRCLE_RADIUS*scale_ratio) - 10,  round(CIRCLE_RADIUS*scale_ratio) + 10)
+	# print(grid)
 
 	grid_calc = image.copy()
 	cv2.circle(grid_calc, (min_circle[0], min_circle[1]), 2, (255, 0, 255), 2)
@@ -128,12 +160,12 @@ while(1):
 
 	cv2.rectangle(grid_calc, start_rect, end_rect, (255, 0, 255), 1)
 
-	# print(grid)
-	print_grid(grid)
+	# print_grid(grid)
+	grid = grid_accumulator(30, 0.3)
 
 	cv2.imshow('ConnecTUM', grid_calc)
-	cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
-	cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+	# cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
+	# cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
 
 	if cv2.waitKey(10) & 0xFF == ord('q'):
 		webcam.release()
