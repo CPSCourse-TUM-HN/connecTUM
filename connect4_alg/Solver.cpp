@@ -17,6 +17,7 @@
  */
 
 #include <cassert>
+#include <iostream>
 #include "Solver.hpp"
 #include "MoveSorter.hpp"
 
@@ -138,6 +139,19 @@ std::vector<int> Solver::analyze(const Position &P, bool weak) {
       }
     }
   return scores;
+}
+
+int Solver::evaluate_score(int winner, int moves_played, int max_moves) {
+    // winner: 0=draw, 1=player, 2=bot
+    if (winner == 0) {
+        return max_moves;
+    } else if (winner == 1) {
+        int score = 2 * max_moves - moves_played;
+        return score;
+    } else if (winner == 2) {
+        return moves_played;
+    }
+    return 0;
 }
 
 // Constructor
