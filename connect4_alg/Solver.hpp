@@ -74,12 +74,6 @@ class Solver {
 
   Solver(); // Constructor
 
-  /**
-   * Simplified evaluation function for Connect4 scoring system.
-   * @param: winner (0=draw, 1=player, 2=bot), moves_played (total moves), max_moves (board size)
-   * @return: int score
-   */
-  static int evaluate_score(int winner, int moves_played, int max_moves);
 };
 
 } // namespace Connect4

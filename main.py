@@ -249,10 +249,17 @@ def optimal_play(board):
         return col
 
 def print_final_score(board, winner):
+    score = get_score(board, winner)
+    print(f"Final score for your game: {score}")
+
+def get_score(board, winner):
     moves_played = int(np.sum(board != 0))
     max_moves = board.shape[0] * board.shape[1]
-    score = Solver.evaluate_score(winner, moves_played, max_moves)
-    print(f"Final score for your game: {score}")
+    if winner == BOT_PIECE:
+        score = moves_played
+    else:
+        score = max_moves * 2 - moves_played
+    return score * 10
 
 def play_game():
     board = create_board()
@@ -281,17 +288,17 @@ def play_game():
                     print("Please enter a valid integer between 0 and 6.")
             game_over = play_turn(board, col, PLAYER_PIECE)
             if game_over:
-                winner = 1
+                winner = PLAYER_PIECE
         else:
             col = play_alg[mode](board)
             game_over = play_turn(board, col, BOT_PIECE)
             if game_over:
-                winner = 2
+                winner = BOT_PIECE
         if len(get_valid_locations(board)) == 0 and not game_over:
             pretty_print_board(board)
             print("Game is a draw!")
             game_over = True
-            winner = 0
+            winner = PLAYER_PIECE
         turn ^= 1  # Switch turns
     print_final_score(board, winner)
 

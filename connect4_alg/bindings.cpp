@@ -60,7 +60,6 @@ PYBIND11_MODULE(connect4, m) {
     py::class_<Solver>(m, "Solver")
         .def(py::init<>())
         .def("solve", &Solver::solve)
-        .def("analyze", &Solver::analyze)
-        .def_static("evaluate_score", &Solver::evaluate_score);
+        .def("analyze", &Solver::analyze);
 }
 
