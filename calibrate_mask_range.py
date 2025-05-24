@@ -3,8 +3,8 @@ import numpy as np
 #include <opencv2/highgui.hpp>
 
 Winname = "Frame"
-default_lower = [160, 100, 100]
-default_upper = [180, 255, 255]
+default_lower = [25, 90, 90]
+default_upper = [40, 200, 200]
 
 def nothing(x):
     pass
@@ -21,6 +21,13 @@ cv.createTrackbar('V (lower)',Winname,0,255,nothing)
 cv.createTrackbar('H (upper)',Winname,0,255,nothing)
 cv.createTrackbar('S (upper)',Winname,0,255,nothing)
 cv.createTrackbar('V (upper)',Winname,0,255,nothing)
+
+# cv.createTrackbar('H2 (lower)',Winname,0,255,nothing)
+# cv.createTrackbar('S2 (lower)',Winname,0,255,nothing)
+# cv.createTrackbar('V2 (lower)',Winname,0,255,nothing)
+# cv.createTrackbar('H2 (upper)',Winname,0,255,nothing)
+# cv.createTrackbar('S2 (upper)',Winname,0,255,nothing)
+# cv.createTrackbar('V2 (upper)',Winname,0,255,nothing)
 cv.createTrackbar('Print',Winname,0,1,nothing)
 
 cv.setTrackbarPos('H (lower)',Winname,default_lower[0])
@@ -40,9 +47,19 @@ while cap.isOpened():
     H2 = cv.getTrackbarPos('H (upper)', 'Frame')
     S2 = cv.getTrackbarPos('S (upper)', 'Frame')
     V2 = cv.getTrackbarPos('V (upper)', 'Frame')
+
+    # H_2 = cv.getTrackbarPos('H2 (lower)', 'Frame')
+    # S_2 = cv.getTrackbarPos('S2 (lower)', 'Frame')
+    # V_2 = cv.getTrackbarPos('V2 (lower)', 'Frame')
+    # H2_2 = cv.getTrackbarPos('H2 (upper)', 'Frame')
+    # S2_2 = cv.getTrackbarPos('S2 (upper)', 'Frame')
+    # V2_2 = cv.getTrackbarPos('V2 (upper)', 'Frame')
+
     hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
     lower_boundary = np.array([H, S, V])
     upper_boundary = np.array([H2,S2,V2])
+    # lower_boundary2 = np.array([H_2, S_2, V_2])
+    # upper_boundary2 = np.array([H2_2,S2_2,V2_2])
     mask = cv.inRange(hsv, lower_boundary, upper_boundary)
     final = cv.bitwise_and(frame, frame, mask=mask)
     cv.imshow("Frame", final)
