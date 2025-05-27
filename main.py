@@ -1,9 +1,12 @@
 # code from https://roboticsproject.readthedocs.io/en/latest/ConnectFourAlgorithm.html
-import math
 import random
 import numpy as np
+import multiprocessing as mp
+from multiprocessing import Manager
 
 from connect4 import Position, Solver
+import grid_fix
+from camera import Camera
 
 ROW_COUNT = 6
 COLUMN_COUNT = 7
@@ -11,6 +14,8 @@ WINDOW_LENGTH = 4
 PLAYER_PIECE = -1
 BOT_PIECE = 1
 EMPTY = 0
+
+grid = None
 
 def create_board():
     board = np.zeros((ROW_COUNT, COLUMN_COUNT))
@@ -45,6 +50,46 @@ def get_valid_locations(board):
 
 def is_valid_location(board, col):
     return board[ROW_COUNT - 1][col] == 0
+
+def is_valid_board(board):
+    # For each column, check that there are no empty cells below a filled cell
+    for col in range(COLUMN_COUNT):
+        found_empty = False
+        for row in range(ROW_COUNT):
+            if board[row][col] == 0:
+                found_empty = True
+            elif found_empty:
+                # Found a token above an empty cell, invalid board
+                return False
+    return True
+
+
+# TODO add more error / cheating & interim state handling
+def get_valid_state(old_board, new_board):
+    # First, check if the new board is valid
+    if not is_valid_board(new_board):
+        return None
+
+    # The new board must have exactly one more token than the old board
+    old_count = np.count_nonzero(old_board)
+    new_count = np.count_nonzero(new_board)
+    if new_count != old_count + 1:
+        return None
+
+    # Find the difference between the boards
+    diff = new_board - old_board
+    changed_positions = np.argwhere(diff != 0)
+
+    # There must be exactly one changed position
+    if changed_positions.shape[0] != 1:
+        return None
+
+    row, col = changed_positions[0]
+    # The change must be on top of the stack (all rows below must be non-empty in new_board)
+    if row > 0 and new_board[row-1][col] == 0:
+        return None
+
+    return int(col)
 
 def get_next_open_row(board, col):
     for r in range(ROW_COUNT):
@@ -259,7 +304,8 @@ def get_score(board, winner):
         score = max_moves * 2 - moves_played
     return score * 10
 
-def play_game():
+def play_game(shared_dict):
+    global grid
     board = create_board()
     game_over = False
     turn = 0  # 0: Player, 1: Bot
@@ -269,22 +315,28 @@ def play_game():
         'hard': hard_play,
         'impossible': optimal_play,
     }
-    mode = 'hard'
+    mode = 'impossible'
     winner = 0
+    # Wait for camera to start producing data
+    print("Waiting for camera to initialize...")
+    while 'grid_ready' not in shared_dict or not shared_dict['grid_ready']:
+        pass
+    print("Camera ready, game starting!")
     while not game_over:
+        #current_grid = shared_dict['current_grid'].copy()
         pretty_print_board(board)
-        print(board)
-        if turn == 0:
+        if turn == 0 and 'current_grid' in shared_dict:
             valid_move = False
             while not valid_move:
-                try:
-                    col = int(input("Player 1 Make your Selection (0-6): "))
-                    if 0 <= col < COLUMN_COUNT and is_valid_location(board, col):
-                        valid_move = True
-                    else:
-                        print("Invalid column. Try again.")
-                except ValueError:
-                    print("Please enter a valid integer between 0 and 6.")
+                # Wait for new grid data from camera
+                new_grid = None
+                while new_grid is None:
+                    if 'current_grid' in shared_dict:
+                        new_grid = shared_dict['current_grid'].copy()
+                col = get_valid_state(board, new_grid)
+                if col is not None:
+                    valid_move = True
+                    shared_dict['last_player_move'] = col  # Store the move
             game_over = play_turn(board, col, PLAYER_PIECE)
             if game_over:
                 winner = PLAYER_PIECE
@@ -293,13 +345,26 @@ def play_game():
             game_over = play_turn(board, col, BOT_PIECE)
             if game_over:
                 winner = BOT_PIECE
+
         if len(get_valid_locations(board)) == 0 and not game_over:
             pretty_print_board(board)
             print("Game is a draw!")
             game_over = True
-            winner = PLAYER_PIECE
+            winner = EMPTY
         turn ^= 1  # Switch turns
     print_final_score(board, winner)
+    shared_dict['game_over'] = True
+
+def camera_processing(grid, shared_dict):
+    Camera.start_image_processing(grid, shared_dict)
 
 if __name__ == "__main__":
-    play_game()
+    manager = Manager()
+    shared_dict = manager.dict()
+    shared_dict['game_over'] = False
+    shared_dict['grid_ready'] = False
+    grid = grid_fix.Grid(30, 0.3)
+    camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
+    camera_process.start()
+    play_game(shared_dict)
+    camera_process.join()

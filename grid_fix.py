@@ -39,8 +39,11 @@ class Grid:
         self.cell_w = (self.max_circle[0] - self.min_circle[0]) / (param.COLUMNS - 1)
         self.cell_h = (self.max_circle[1] - self.min_circle[1]) / (param.ROWS - 1)
 
+        self.h = new_h
+        self.w = new_w
+
     def compute_grid(self, mask_array, img):
-        if len(mask_array) != 2:
+        if len(mask_array) != 2 or self.h is None or self.w is None:
             return
         
         # Detect and map red (-1) and yellow (1) circles
@@ -56,15 +59,18 @@ class Grid:
             self.frame_count += 1
             return
 
-        self.computed_grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
+        new_grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
 
         for i in range(param.ROWS):
             for j in range(param.COLUMNS):
                 if abs(self.grid[i][j]) >= self.max_frame * self.sucess_rate:
-                    self.computed_grid[i][j] = 1 if self.grid[i][j] < 0 else 2
+                    new_grid[i][j] = -1 if self.grid[i][j] < 0 else 1
 
         self.frame_count = 0
         self.grid = np.zeros((6, 7), dtype=int)
+        self.computed_grid = new_grid
+        #print("in grid_fix")
+        #print(self.computed_grid)
 
     # Detect coins and map them to a grid position
     def detect_and_map(self, mask, value, img):
@@ -122,9 +128,9 @@ class Grid:
                 radius = cell_size // 2 - 5
 
                 value = self.computed_grid[i][j]
-                if value == 1:
+                if value == -1:
                     color = (0, 0, 255)  # red (BGR)
-                elif value == 2:
+                elif value == 1:
                     color = (0, 255, 255)  # yellow (BGR)
                 else:
                     color = (255, 255, 255)  # white

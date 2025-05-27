@@ -27,7 +27,7 @@ class Camera:
             image = cv2.flip(image, 1)
 
         # White Balance
-        #image = white_balance(image)
+        #image = Camera.white_balance(image)
 
         # Convert to LAB color space (L = lightness, A & B = color channels)
         lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
@@ -77,7 +77,7 @@ class Camera:
         cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
 
     @staticmethod
-    def start_image_processing(g):
+    def start_image_processing(g, shared_dict):
         webcam = cv2.VideoCapture(param.DEFAULT_CAMERA)
 
         while True:
@@ -98,6 +98,10 @@ class Camera:
                 g.resize(h, w)
 
             Camera.analyse_image(image, g)
+
+            if g.computed_grid is not None:
+                shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()
+                shared_dict['grid_ready'] = True
 
 if __name__ == "__main__":
     g = grid.Grid(30, 0.3)

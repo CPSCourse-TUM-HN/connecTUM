@@ -23,8 +23,8 @@ RED_U = np.array([5, 255, 255], np.uint8)
 RED_HR_L = np.array([160, 110, 110], np.uint8)
 RED_HR_U = np.array([180, 255, 255], np.uint8)
 
-YELLOW_L = np.array([25, 90, 90], np.uint8)
-YELLOW_U = np.array([40, 200, 200], np.uint8)
+YELLOW_L = np.array([15, 100, 100], np.uint8)
+YELLOW_U = np.array([30, 255, 255], np.uint8)
 
 BLUE_L = np.array([100, 150, 50], np.uint8)
 BLUE_U = np.array([130, 255, 255], np.uint8)
