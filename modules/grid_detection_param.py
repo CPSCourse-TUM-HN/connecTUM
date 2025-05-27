@@ -3,6 +3,7 @@ import numpy as np
 # Camera
 BUILT_IN_WEBCAM = 0
 EXTERNAL_WEBCAM = 1
+DEFAULT_CAMERA = BUILT_IN_WEBCAM
 
 # Board Dimension
 BOARD_WIDTH = 189
@@ -11,6 +12,9 @@ CIRCLE_RADIUS = 8.75
 PADDING_TOP = 7
 PADDING_SIDE = 7.75
 DESCALE_FACTOR = 1
+
+ROWS = 6
+COLUMNS = 7
 
 # Color Ranges
 RED_L = np.array([0, 110, 110], np.uint8)

@@ -145,7 +145,7 @@ while(1):
 		# print(grid)
 		print_grid(grid)
 	else:
-		print("No corners detected. Cannot compute grid boundaries.")
+		print("No corners detected. Cannot compute grid boundaries.k")
 
 	cv2.imshow('ConnecTUM', image)
 	cv2.imshow('Blue Mask', blue_mask)

@@ -12,8 +12,6 @@ PLAYER_PIECE = -1
 BOT_PIECE = 1
 EMPTY = 0
 
-
-
 def create_board():
     board = np.zeros((ROW_COUNT, COLUMN_COUNT))
     return board
@@ -275,6 +273,7 @@ def play_game():
     winner = 0
     while not game_over:
         pretty_print_board(board)
+        print(board)
         if turn == 0:
             valid_move = False
             while not valid_move:

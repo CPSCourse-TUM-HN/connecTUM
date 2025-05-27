@@ -1,95 +1,104 @@
 import cv2
 import numpy as np
 
-webcam = cv2.VideoCapture(0)
+import grid_fix as grid
+from modules import grid_detection_param as param
 
-def collect_circles(mask, minRadius, maxRadius):
-    centers = []
-    blurred = cv2.GaussianBlur(mask, (9, 9), 2)
-    circles = cv2.HoughCircles(
-        blurred,
-        cv2.HOUGH_GRADIENT,
-        dp=1,
-        minDist=20,
-        param1=50,
-        param2=28,
-        minRadius=minRadius,
-        maxRadius=maxRadius
-    )
-    if circles is not None and len(circles) > 0:
-        circles = np.uint16(np.around(circles))
-        for x, y, _ in circles[0]:
-            centers.append((x, y))
-    return centers
+class Camera:
+    @staticmethod
+    def white_balance(img):
+        result = img.copy().astype(np.float32)
 
-def detect_and_map(mask, value, minRadius, maxRadius, x_min, y_min, cell_w, cell_h, grid):
-    blurred = cv2.GaussianBlur(mask, (9, 9), 2)
-    circles = cv2.HoughCircles(
-        blurred,
-        cv2.HOUGH_GRADIENT,
-        dp=1,
-        minDist=20,
-        param1=50,
-        param2=28,
-        minRadius=minRadius,
-        maxRadius=maxRadius
-    )
-    if circles is not None and len(circles) > 0:
-        circles = np.uint16(np.around(circles))
-        for x, y, _ in circles[0]:
-            #col = int(round((x - x_min) / cell_w))
-            #row = int(round((y - y_min) / cell_h))
-            #col = min(max(col, 0), grid.shape[1] - 1)
-            #row = min(max(row, 0), grid.shape[0] - 1)
-            #grid[row, col] = value
+        avg_b = np.mean(result[:, :, 0])
+        avg_g = np.mean(result[:, :, 1])
+        avg_r = np.mean(result[:, :, 2])
+        avg = (avg_b + avg_g + avg_r) / 3
 
-while True:
-    _, image = webcam.read()
-    hsvFrame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        result[:, :, 0] *= avg / avg_b
+        result[:, :, 1] *= avg / avg_g
+        result[:, :, 2] *= avg / avg_r
 
-    # Color ranges
-    red_lower = np.array([136, 87, 111], np.uint8)
-    red_upper = np.array([180, 255, 255], np.uint8)
-    yellow_lower = np.array([20, 100, 100], np.uint8)
-    yellow_upper = np.array([30, 255, 255], np.uint8)
+        return np.clip(result, 0, 255).astype(np.uint8)
 
-    # Masks
-    red_mask = cv2.inRange(hsvFrame, red_lower, red_upper)
-    yellow_mask = cv2.inRange(hsvFrame, yellow_lower, yellow_upper)
+    @staticmethod
+    def analyse_image(image, grid):
+        # Flip image if using webcam
+        if param.DEFAULT_CAMERA == param.BUILT_IN_WEBCAM:
+            image = cv2.flip(image, 1)
 
-    kernel = np.ones((5, 5), "uint8")
-    red_mask = cv2.dilate(red_mask, kernel)
-    yellow_mask = cv2.dilate(yellow_mask, kernel)
+        # White Balance
+        #image = white_balance(image)
 
-    # Collect all circle centers for boundary calculation
-    initial_minRadius, initial_maxRadius = 15, 60
-    circle_centers = collect_circles(red_mask, initial_minRadius, initial_maxRadius)
-    circle_centers += collect_circles(yellow_mask, initial_minRadius, initial_maxRadius)
+        # Convert to LAB color space (L = lightness, A & B = color channels)
+        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
-    if circle_centers:
-        xs, ys = zip(*circle_centers)
-        x_min, x_max = min(xs), max(xs)
-        y_min, y_max = min(ys), max(ys)
+        # Split into channels
+        l, a, b = cv2.split(lab)
 
-        # Calculate distance and radii as before
-        distance = np.hypot(x_max - x_min, y_max - y_min)
-        minRadius = int(distance * 0.05)
-        maxRadius = int(distance * 0.2)
+        # Apply CLAHE to the lightness channel only
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        cl = clahe.apply(l)
 
-        rows, cols = 6, 7
-        cell_w = (x_max - x_min) / (cols - 1)
-        cell_h = (y_max - y_min) / (rows - 1)
-        grid = np.zeros((rows, cols), dtype=int)
+        # Merge back the processed L with original A and B
+        lab_clahe = cv2.merge((cl, a, b))
 
-        detect_and_map(red_mask, 1, minRadius, maxRadius, x_min, y_min, cell_w, cell_h, grid)
-        detect_and_map(yellow_mask, 2, minRadius, maxRadius, x_min, y_min, cell_w, cell_h, grid)
+        # Convert back to BGR
+        image_corrected = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
+        hsv_frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv_frame_corrected = cv2.cvtColor(image_corrected, cv2.COLOR_BGR2HSV)
 
-        print(grid)
-    else:
-        print("No circles detected. Cannot compute grid boundaries.")
+        # Masks
+        yellow_mask = cv2.inRange(hsv_frame, param.YELLOW_L, param.YELLOW_U)
+        red_mask = cv2.inRange(hsv_frame, param.RED_L, param.RED_U) | cv2.inRange(hsv_frame, param.RED_HR_L, param.RED_HR_U)
 
-    cv2.imshow('Andrea', image)
-    if cv2.waitKey(10) & 0xFF == ord('q'):
-        webcam.release()
-        cv2.destroyAllWindows()
-        break
+        # Subtract the noise from the red mask
+        red_noise_mask = cv2.inRange(hsv_frame, param.RED_NOISE_L, param.RED_NOISE_U)
+        # red_mask = cv2.subtract(red_mask, noise_mask)
+
+        # Dilate masks to fill small holes
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_CLOSE, kernel)
+        yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
+
+        red_mask = cv2.dilate(red_mask, kernel)
+        yellow_mask = cv2.dilate(yellow_mask, kernel)
+
+        # Print the grid mask
+        grid_calc = image.copy()
+        grid.draw_grid_mask(grid_calc)
+
+        # Detect and map red (1) and yellow (2) circles
+        grid.compute_grid([red_mask, yellow_mask], grid_calc)
+
+        grid.show(cell_size=40)
+
+        cv2.imshow('ConnecTUM', grid_calc)
+        cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
+        cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+
+    @staticmethod
+    def start_image_processing(g):
+        webcam = cv2.VideoCapture(param.DEFAULT_CAMERA)
+
+        while True:
+            _, image = webcam.read()
+
+            if image is None:
+                print("Error: Image not found or path is incorrect.")
+                exit(1)
+
+            if cv2.waitKey(10) & 0xFF == ord('q'):
+                webcam.release()
+                cv2.destroyAllWindows()
+                break
+
+            h, w, _ = image.shape
+
+            if h != g.h or w != g.w:
+                g.resize(h, w)
+
+            Camera.analyse_image(image, g)
+
+if __name__ == "__main__":
+    g = grid.Grid(30, 0.3)
+    Camera.start_image_processing(g)
