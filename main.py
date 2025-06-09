@@ -1,4 +1,7 @@
 # code from https://roboticsproject.readthedocs.io/en/latest/ConnectFourAlgorithm.html
+import itertools
+import json
+import os
 import random
 import numpy as np
 import multiprocessing as mp
@@ -266,30 +269,96 @@ def easy_play(board):
     return col
 
 def medium_play(board):
-    col, _ = minimax(board, 3, -9999999, 9999999, True)
-    return col
-
-def hard_play(board):
     col, _ = minimax(board, 4, -9999999, 9999999, True)
     return col
 
-def optimal_play(board):
+def hard_play(board):
+    col, _ = minimax(board, 6, -9999999, 9999999, True)
+    return col
+
+def optimal_play(board, saved_moves=None):
     """
+    :param saved_moves:
+        Dictionary of board to scores
     :param board:
         Ensure that BOT_PIECE = 1 and PLAYER_PIECE = -1
         Currently only supports WINDOW_LENGTH = 4
     :return:
         Optimal column to play
     """
-    if np.sum(board != 0) < 6: # If less than <n> moves have been played, resort to hard_play to ease search tree
+    if saved_moves is None:
+        saved_moves = {}
+
+    if np.sum(board != 0) < 0: # If less than <n> moves have been played, resort to hard_play to ease search tree
         return hard_play(board)
     else:
-        position = Position(board)
-        solver = Solver()
-        scores = solver.analyze(position, False)
+        key = board2key(board)
+        if key in saved_moves:
+            scores = saved_moves[key]
+        else:
+            position = Position(board)
+            solver = Solver()
+            scores = solver.analyze(position, False)
+            saved_moves[key] = scores
         print(scores) # TODO For debugging, remove later
         col = scores.index(max(scores))
         return col
+
+def board2key(board):
+    return "".join(map(str, board.flatten()))
+
+def train():
+    print("\033[1;32mStarting...\033[0m")
+
+
+    lookup_table_loc = 'lookup_table.json'
+
+    if os.path.isfile(lookup_table_loc):
+        with open(lookup_table_loc, 'r') as file:
+            lookup_table = json.load(file)
+            print(f"Loaded lookup table {lookup_table_loc}.")
+    else:
+        print(f"The file '{lookup_table_loc}' does not exist.")
+        lookup_table = dict()
+
+    board = create_board()
+    game_over = False
+    turn = 0  # 0: Random Bot, 1: Optimal Bot
+    winner = 0
+
+
+    n_turns = 3
+    i = 0
+    move_seqs = (seq for seq in itertools.product(range(COLUMN_COUNT), repeat=n_turns))
+    for player_first in (True, False):
+        for move_seq in move_seqs:
+            print(move_seq)
+            board = create_board()
+            for col in move_seq:
+                if player_first:
+                    if not is_valid_location(board, col): break # Move onto next move sequence
+                    game_over = play_turn(board, col, PLAYER_PIECE)
+                    pretty_print_board(board)
+                    if game_over: break
+
+                col = optimal_play(board, lookup_table)
+                # col = hard_play(board)
+                game_over = play_turn(board, col, BOT_PIECE)
+                pretty_print_board(board)
+                if game_over: break
+
+                if not player_first:
+                    if not is_valid_location(board, col): break # Move onto next move sequence
+                    game_over = play_turn(board, col, PLAYER_PIECE)
+                    pretty_print_board(board)
+                    if game_over: break
+
+
+            with open(lookup_table_loc, 'w') as file:
+                json.dump(lookup_table, file, indent=4)
+                print(f"\033[1;32mSaved for move sequence {i}\033[0m")
+                i += 1
+
 
 def print_final_score(board, winner):
     score = get_score(board, winner)
@@ -359,12 +428,13 @@ def camera_processing(grid, shared_dict):
     Camera.start_image_processing(grid, shared_dict)
 
 if __name__ == "__main__":
-    manager = Manager()
-    shared_dict = manager.dict()
-    shared_dict['game_over'] = False
-    shared_dict['grid_ready'] = False
-    grid = grid_fix.Grid(30, 0.3)
-    camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
-    camera_process.start()
-    play_game(shared_dict)
-    camera_process.join()
+    # manager = Manager()
+    # shared_dict = manager.dict()
+    # shared_dict['game_over'] = False
+    # shared_dict['grid_ready'] = False
+    # grid = grid_fix.Grid(30, 0.3)
+    # camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
+    # camera_process.start()
+    # play_game(shared_dict)
+    # camera_process.join()
+    train()
