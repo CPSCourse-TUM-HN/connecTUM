@@ -295,11 +295,18 @@ def optimal_play(board, saved_moves=None):
         key = board2key(board)
         if key in saved_moves:
             scores = saved_moves[key]
+        # Can deduce scores from res for horizontally flipped config due to symmetry
+        elif ((flipped_key := board2key(board[:, ::-1])) in saved_moves):
+            scores = saved_moves[flipped_key]
         else:
             position = Position(board)
             solver = Solver()
             scores = solver.analyze(position, False)
             saved_moves[key] = scores
+            # # Can also deduce scores for horizontally flipped configuration due to symmetry
+            # flipped_key = board2key(board[:, ::-1])
+            # if not flipped_key in saved_moves:
+            #     saved_moves[flipped_key] = scores[::-1]
         print(scores) # TODO For debugging, remove later
         col = scores.index(max(scores))
         return col
@@ -327,29 +334,29 @@ def train():
     winner = 0
 
 
-    n_turns = 3
+    n_turns = 4
     i = 0
-    move_seqs = (seq for seq in itertools.product(range(COLUMN_COUNT), repeat=n_turns))
-    for player_first in (True, False):
+    for player_first in (True, False,):
+        move_seqs = (seq for seq in itertools.product(range(COLUMN_COUNT), repeat=n_turns))
         for move_seq in move_seqs:
             print(move_seq)
             board = create_board()
-            for col in move_seq:
+            pretty_print_board(board)
+            for it_col in move_seq:
                 if player_first:
-                    if not is_valid_location(board, col): break # Move onto next move sequence
-                    game_over = play_turn(board, col, PLAYER_PIECE)
+                    if not is_valid_location(board, it_col): break # Move onto next move sequence
+                    game_over = play_turn(board, it_col, PLAYER_PIECE)
                     pretty_print_board(board)
                     if game_over: break
 
-                col = optimal_play(board, lookup_table)
-                # col = hard_play(board)
-                game_over = play_turn(board, col, BOT_PIECE)
+                bot_col = optimal_play(board, lookup_table)
+                game_over = play_turn(board, bot_col, BOT_PIECE)
                 pretty_print_board(board)
                 if game_over: break
 
                 if not player_first:
-                    if not is_valid_location(board, col): break # Move onto next move sequence
-                    game_over = play_turn(board, col, PLAYER_PIECE)
+                    if not is_valid_location(board, it_col): break # Move onto next move sequence
+                    game_over = play_turn(board, it_col, PLAYER_PIECE)
                     pretty_print_board(board)
                     if game_over: break
 
@@ -374,6 +381,17 @@ def get_score(board, winner):
     return score * 10
 
 def play_game(shared_dict):
+    lookup_table_loc = 'lookup_table.json'
+
+    if os.path.isfile(lookup_table_loc):
+        with open(lookup_table_loc, 'r') as file:
+            lookup_table = json.load(file)
+            print(f"Loaded lookup table {lookup_table_loc}.")
+    else:
+        print(f"The file '{lookup_table_loc}' does not exist.")
+        lookup_table = dict()
+
+
     global grid
     board = create_board()
     game_over = False
@@ -382,7 +400,7 @@ def play_game(shared_dict):
         'easy': easy_play,
         'medium': medium_play,
         'hard': hard_play,
-        'impossible': optimal_play,
+        'impossible': lambda board: optimal_play(board, lookup_table),
     }
     mode = 'impossible'
     winner = 0
@@ -423,6 +441,9 @@ def play_game(shared_dict):
         turn ^= 1  # Switch turns
     print_final_score(board, winner)
     shared_dict['game_over'] = True
+    # Save learned moves
+    with open(lookup_table_loc, 'w') as file:
+        json.dump(lookup_table, file, indent=4)
 
 def camera_processing(grid, shared_dict):
     Camera.start_image_processing(grid, shared_dict)
