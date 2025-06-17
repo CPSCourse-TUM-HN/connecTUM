@@ -5,13 +5,13 @@ import math
 from modules import grid_detection_param as param
 
 class Grid:
-    def __init__(self, max_frame, sucess_rate):
+    def __init__(self, max_frame, success_rate):
         self.frame_count = 0
         self.grid = np.zeros((6, 7), dtype=int)
         self.computed_grid = np.zeros((6, 7), dtype=int)
 
         self.max_frame = max_frame
-        self.sucess_rate = sucess_rate
+        self.success_rate = success_rate
 
         self.h = None
         self.w = None
@@ -63,7 +63,7 @@ class Grid:
 
         for i in range(param.ROWS):
             for j in range(param.COLUMNS):
-                if abs(self.grid[i][j]) >= self.max_frame * self.sucess_rate:
+                if abs(self.grid[i][j]) >= self.max_frame * self.success_rate:
                     new_grid[i][j] = -1 if self.grid[i][j] < 0 else 1
 
         self.frame_count = 0

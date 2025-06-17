@@ -21,7 +21,7 @@ EMPTY = 0
 grid = None
 
 def create_board():
-    board = np.zeros((ROW_COUNT, COLUMN_COUNT))
+    board = np.zeros((ROW_COUNT, COLUMN_COUNT), dtype=np.int8)
     return board
 
 def pretty_print_board(board):
@@ -254,13 +254,14 @@ def minimax(board, depth, alpha, beta, maximisingPlayer):
                 break
         return column, value
 
-def play_turn(board, col, piece):
+def play_turn(board, col, piece, display_board=True):
     if 0 <= col < COLUMN_COUNT and is_valid_location(board, col):
         row = get_next_open_row(board, col)
         drop_piece(board, row, col, piece)
         if winning_move(board, piece):
-            pretty_print_board(board)
-            print(f"{'PLAYER 1' if piece == PLAYER_PIECE else 'BOT'} WINS!")
+            if display_board:
+                pretty_print_board(board)
+                print(f"{'PLAYER 1' if piece == PLAYER_PIECE else 'BOT'} WINS!")
             return True  # Game over
     return False  # Game continues
 
@@ -289,32 +290,29 @@ def optimal_play(board, saved_moves=None):
     if saved_moves is None:
         saved_moves = {}
 
-    if np.sum(board != 0) < 0: # If less than <n> moves have been played, resort to hard_play to ease search tree
-        return hard_play(board)
+    key = board2key(board)
+    if key in saved_moves:
+        scores = saved_moves[key]
+    # Can deduce scores from res for horizontally flipped config due to symmetry
+    elif ((flipped_key := board2key(board[:, ::-1])) in saved_moves):
+        scores = saved_moves[flipped_key]
     else:
-        key = board2key(board)
-        if key in saved_moves:
-            scores = saved_moves[key]
-        # Can deduce scores from res for horizontally flipped config due to symmetry
-        elif ((flipped_key := board2key(board[:, ::-1])) in saved_moves):
-            scores = saved_moves[flipped_key]
-        else:
-            position = Position(board)
-            solver = Solver()
-            scores = solver.analyze(position, False)
-            saved_moves[key] = scores
-            # # Can also deduce scores for horizontally flipped configuration due to symmetry
-            # flipped_key = board2key(board[:, ::-1])
-            # if not flipped_key in saved_moves:
-            #     saved_moves[flipped_key] = scores[::-1]
-        print(scores) # TODO For debugging, remove later
-        col = scores.index(max(scores))
-        return col
+        position = Position(board)
+        solver = Solver()
+        scores = solver.analyze(position, False)
+        saved_moves[key] = scores
+        # # Can also deduce scores for horizontally flipped configuration due to symmetry
+        # flipped_key = board2key(board[:, ::-1])
+        # if not flipped_key in saved_moves:
+        #     saved_moves[flipped_key] = scores[::-1]
+    print(scores) # TODO For debugging, remove later
+    col = scores.index(max(scores))
+    return col
 
 def board2key(board):
     return "".join(map(str, board.flatten()))
 
-def train():
+def train(n_turns=4):
     print("\033[1;32mStarting...\033[0m")
 
 
@@ -334,7 +332,8 @@ def train():
     winner = 0
 
 
-    n_turns = 4
+    if n_turns is None:
+        n_turns = ROW_COUNT * COLUMN_COUNT // 2 + 1
     i = 0
     for player_first in (True, False,):
         move_seqs = (seq for seq in itertools.product(range(COLUMN_COUNT), repeat=n_turns))
@@ -449,13 +448,13 @@ def camera_processing(grid, shared_dict):
     Camera.start_image_processing(grid, shared_dict)
 
 if __name__ == "__main__":
-    # manager = Manager()
-    # shared_dict = manager.dict()
-    # shared_dict['game_over'] = False
-    # shared_dict['grid_ready'] = False
-    # grid = grid_fix.Grid(30, 0.3)
-    # camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
-    # camera_process.start()
-    # play_game(shared_dict)
-    # camera_process.join()
-    train()
+    manager = Manager()
+    shared_dict = manager.dict()
+    shared_dict['game_over'] = False
+    shared_dict['grid_ready'] = False
+    grid = grid_fix.Grid(30, 0.3)
+    camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
+    camera_process.start()
+    play_game(shared_dict)
+    camera_process.join()
+    # train()
