@@ -1,15 +1,12 @@
 from main import *
 import itertools
 from time import time
-from connect4 import Position, Solver
 import multiprocessing as mp
+import sys # For command line args
+from connect4 import Position, Solver
 
 SENTINEL = None
 
-# board_states = []
-
-# bot_start_states = []
-# player_start_states = []
 
 def ret_game_states():
     for start_piece in (BOT_PIECE, PLAYER_PIECE):
@@ -38,6 +35,7 @@ def ret_game_states():
                     if not is_valid_location(board, col):
                         unfilled_cols.remove(col)
                         continue
+
 
 def combinations_with_max_repeats(iterable, r, max_repeats):
     """
@@ -75,13 +73,12 @@ def combinations_with_max_repeats(iterable, r, max_repeats):
     
     yield from generate_combinations(0, [], r, {})
 
-
-def get_game_states():
+def get_game_states(min_n_turns=0, max_n_turns= ROW_COUNT * COLUMN_COUNT):
     """Generator of valid board game states"""
 
     cols = [i for i in range(COLUMN_COUNT)]
-    # for n_turns in range(ROW_COUNT * COLUMN_COUNT):
-    for n_turns in range(2):
+    for n_turns in range(min_n_turns, max_n_turns):
+    # for n_turns in range(2):
         print("\x1b[1;31m" + str(n_turns) + "\033[0m")
         for combo in combinations_with_max_repeats(cols, n_turns, ROW_COUNT):
             n_bot_moves = n_turns // 2
@@ -102,9 +99,9 @@ def get_optimal_move(board):
 
 # Multiprocessing functions
 
-def produce_states(state_queue, num_workers):
+def produce_states(state_queue, num_workers, min_n_turns, max_n_turns):
     print(f"Producer: {mp.current_process().name}")
-    for game_state in get_game_states():
+    for game_state in get_game_states(min_n_turns, max_n_turns):
         state_queue.put(game_state)
     # Send stop signal to solvers
     for _ in range(num_workers):
@@ -137,6 +134,18 @@ def collector(result_queue, num_workers, output_file):
 
 
 if (__name__ == "__main__"):
+    if (len(sys.argv) == 1):
+        min_n_turns = 0
+        max_n_turns = ROW_COUNT * COLUMN_COUNT
+    elif (len(sys.argv) == 3):
+        try:
+            min_n_turns = int(sys.argv[1])
+            max_n_turns = int(sys.argv[2])
+        except ValueError:
+            print("Error: args have to be positive ints")
+            print("Hint: usage is train_bot.py <min_n_turns> <max_n_turns>")
+            exit()
+
     mp.freeze_support()
 
     lookup_table_loc = "big_lookup_table.json"
@@ -152,7 +161,7 @@ if (__name__ == "__main__"):
 
     start_time = time()
 
-    producer_process = mp.Process(target=produce_states, args=(task_queue, num_workers))
+    producer_process = mp.Process(target=produce_states, args=(task_queue, num_workers, min_n_turns, max_n_turns))
     producer_process.start()
 
     workers = []
