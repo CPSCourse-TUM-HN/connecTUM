@@ -1,13 +1,14 @@
 #include "AccelStepper.h"
 #include "AccelStepperWithDistance.h"
+#include <ESP32Servo.h>
 
 #define dirPin 4
 #define stepPin 2
 #define limitSwitchPin 13
-#define motorInterfaceType 1
 
 // to fix access to tty0
 // sudo chmod a+rw /dev/ttyUSB0
+
 static volatile bool homingComplete = false;
 static bool get_homingComplete() {
   bool val;
@@ -28,6 +29,12 @@ void handleLimitSwitch() {
     interrupts();
   }
 }
+
+// Servo
+const int coinDispenserServoPin = 26;
+Servo coinDispenserServo;
+const int coinDropperServoPin = 14;
+Servo coinDropperServo;
 
 void setup() {
   Serial.begin(9600);
@@ -54,6 +61,12 @@ void setup() {
     stepper.run();
   }
   stepper.setCurrentPosition(0);  // New home position
+
+  coinDispenserServo.attach(coinDispenserServoPin);
+  coinDispenserServo.write(170);
+
+  coinDropperServo.attach(coinDropperServoPin);
+  coinDropperServo.write(30);
 }
 
 int pos = 0;
@@ -65,12 +78,24 @@ int tileCount = 8; //including loader as last position
 
 void loop() {
   // upon bytes available in the serial interface
-  if(Serial.available()){
+  if(Serial.available()) {
   // Set the target position:
     pos = Serial.parseInt();
-    dest = (pos%tileCount) * tileWidth;
-    if(pos == 7) dest += loaderOffset;
-    stepper.runToNewDistance(dest);
+
+    if(pos == 100) {
+      coinDispenserServo.write(80);
+      delay(2000);
+      coinDispenserServo.write(170);
+    } else if(pos == 200) {
+      coinDropperServo.write(130);
+      delay(2000);
+      coinDropperServo.write(30);
+    } else {
+      dest = (pos%tileCount) * tileWidth;
+      if(pos == 7) dest += loaderOffset;
+      stepper.runToNewDistance(dest);
+    }
+    
   }
   delay(50);
 }
