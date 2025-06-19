@@ -15,7 +15,7 @@ class get_pybind_include(object):
 
 ext_modules = [
     Extension(
-        'connect4',
+        'connect4_alg',
         ['bindings.cpp', 'Solver.cpp'],
         include_dirs=[
             get_pybind_include(),
@@ -26,7 +26,7 @@ ext_modules = [
 ]
 
 setup(
-    name='connect4',
+    name='connect4_alg',
     version=__version__,
     author='Pascal Pons',
     author_email='contact@gamesolver.org',

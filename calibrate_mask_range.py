@@ -1,3 +1,4 @@
+from picamera2 import Picamera2
 import cv2 as cv
 import numpy as np
 #include <opencv2/highgui.hpp>
@@ -37,10 +38,14 @@ cv.setTrackbarPos('H (upper)',Winname,default_upper[0])
 cv.setTrackbarPos('S (upper)',Winname,default_upper[1])
 cv.setTrackbarPos('V (upper)',Winname,default_upper[2])
 
-cap = cv.VideoCapture(0)
+#cap = cv.VideoCapture(0)
+picam2 = Picamera2()
+picam2.configure(picam2.create_still_configuration())
+picam2.start()
 
-while cap.isOpened():
-    _, frame = cap.read()
+while True:
+    #_, frame = cap.read()
+    frame = picam2.capture_array()
     H = cv.getTrackbarPos('H (lower)', 'Frame')
     S = cv.getTrackbarPos('S (lower)', 'Frame')
     V = cv.getTrackbarPos('V (lower)', 'Frame')
@@ -70,7 +75,9 @@ while cap.isOpened():
         print(f'lower: [{H}, {S}, {V}] | upper:[{H2}, {S2}, {V2}]')
         cv.setTrackbarPos('Print',Winname,0)
 
-    if cv.waitKey(1) == ord('q'): break
+    if cv.waitKey(1) == ord('q'):
+        picam2.stop()
+        break
 
 cap.release()
 cv.destroyAllWindows()
