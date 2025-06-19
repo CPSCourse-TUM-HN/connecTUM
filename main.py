@@ -7,8 +7,8 @@ import numpy as np
 import multiprocessing as mp
 from multiprocessing import Manager
 
-from connect4 import Position, Solver
-import grid_fix
+from connect4_alg import Position, Solver
+from grid import Grid
 from camera import Camera
 
 ROW_COUNT = 6
@@ -452,7 +452,7 @@ if __name__ == "__main__":
     shared_dict = manager.dict()
     shared_dict['game_over'] = False
     shared_dict['grid_ready'] = False
-    grid = grid_fix.Grid(30, 0.3)
+    grid = Grid(30, 0.3)
     camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
     camera_process.start()
     play_game(shared_dict)

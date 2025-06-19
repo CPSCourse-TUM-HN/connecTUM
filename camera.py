@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-import grid_fix as grid
+import grid as grid
 from modules import grid_detection_param as param
 
 class Camera:

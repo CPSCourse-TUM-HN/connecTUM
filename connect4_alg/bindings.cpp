@@ -8,7 +8,7 @@
 namespace py = pybind11;
 using namespace GameSolver::Connect4;
 
-PYBIND11_MODULE(connect4, m) {
+PYBIND11_MODULE(connect4_alg, m) {
     m.doc() = "Python bindings for Connect4 Game Solver";
 
     py::class_<Position>(m, "Position")
