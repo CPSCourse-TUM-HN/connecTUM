@@ -79,8 +79,8 @@ class Camera:
         #cv2.imshow("Original", image)
         #cv2.resizeWindow("ConnecTUM", 50, 50)
         cv2.imshow('ConnecTUM', grid_calc)
-        #cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
-        #cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+        cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
+        cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
 
     @staticmethod
     def start_image_processing(g, shared_dict):
