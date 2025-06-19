@@ -1,3 +1,4 @@
+from picamera2 import Picamera2
 import cv2
 import numpy as np
 
@@ -23,36 +24,40 @@ class Camera:
     @staticmethod
     def analyse_image(image, grid):
         # Flip image if using webcam
-        if param.DEFAULT_CAMERA == param.BUILT_IN_WEBCAM:
-            image = cv2.flip(image, 1)
+        #if param.DEFAULT_CAMERA == param.BUILT_IN_WEBCAM:
+        #    image = cv2.flip(image, 1)
 
         # White Balance
         #image = Camera.white_balance(image)
 
         # Convert to LAB color space (L = lightness, A & B = color channels)
-        lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        #lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
 
         # Split into channels
-        l, a, b = cv2.split(lab)
+        #l, a, b = cv2.split(lab)
 
         # Apply CLAHE to the lightness channel only
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        cl = clahe.apply(l)
+        #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        #cl = clahe.apply(l)
 
         # Merge back the processed L with original A and B
-        lab_clahe = cv2.merge((cl, a, b))
+        #lab_clahe = cv2.merge((cl, a, b))
+
 
         # Convert back to BGR
-        image_corrected = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-        hsv_frame = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        hsv_frame_corrected = cv2.cvtColor(image_corrected, cv2.COLOR_BGR2HSV)
+        #image_corrected = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
+        bgr_frame = image[:, :, :3]  # Drop the 4th channel (X)
+        #bgr_frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        hsv_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2HSV)
+        #hsv_frame = cv2.cvtColor(image, cv2.COLOR_BayerBG2BGR)
+        #hsv_frame_corrected = cv2.cvtColor(image_corrected, cv2.COLOR_BGR2HSV)
 
         # Masks
         yellow_mask = cv2.inRange(hsv_frame, param.YELLOW_L, param.YELLOW_U)
         red_mask = cv2.inRange(hsv_frame, param.RED_L, param.RED_U) | cv2.inRange(hsv_frame, param.RED_HR_L, param.RED_HR_U)
 
         # Subtract the noise from the red mask
-        red_noise_mask = cv2.inRange(hsv_frame, param.RED_NOISE_L, param.RED_NOISE_U)
+        #red_noise_mask = cv2.inRange(hsv_frame, param.RED_NOISE_L, param.RED_NOISE_U)
         # red_mask = cv2.subtract(red_mask, noise_mask)
 
         # Dilate masks to fill small holes
@@ -69,26 +74,29 @@ class Camera:
 
         # Detect and map red (1) and yellow (2) circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
-
         grid.show(cell_size=40)
 
+        #cv2.imshow("Original", image)
+        #cv2.resizeWindow("ConnecTUM", 50, 50)
         cv2.imshow('ConnecTUM', grid_calc)
-        cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
-        cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+        #cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
+        #cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
 
     @staticmethod
     def start_image_processing(g, shared_dict):
-        webcam = cv2.VideoCapture(param.DEFAULT_CAMERA)
+        picam2 = Picamera2()
+        picam2.configure(picam2.create_video_configuration())
+        picam2.start()
 
         while True:
-            _, image = webcam.read()
+            image = picam2.capture_array()
 
             if image is None:
                 print("Error: Image not found or path is incorrect.")
                 exit(1)
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
-                webcam.release()
+                picam2.stop()
                 cv2.destroyAllWindows()
                 break
 
@@ -104,5 +112,5 @@ class Camera:
                 shared_dict['grid_ready'] = True
 
 if __name__ == "__main__":
-    g = grid.Grid(30, 0.3)
-    Camera.start_image_processing(g)
+    g = grid.Grid(5, 0.3)
+    Camera.start_image_processing(g, {})

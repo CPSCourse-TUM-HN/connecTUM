@@ -17,14 +17,14 @@ ROWS = 6
 COLUMNS = 7
 
 # Color Ranges
-RED_L = np.array([0, 110, 110], np.uint8)
-RED_U = np.array([5, 255, 255], np.uint8)
+RED_L = np.array([105, 200, 180], np.uint8)
+RED_U = np.array([125, 255, 255], np.uint8)
 
 RED_HR_L = np.array([160, 110, 110], np.uint8)
 RED_HR_U = np.array([180, 255, 255], np.uint8)
 
-YELLOW_L = np.array([15, 100, 100], np.uint8)
-YELLOW_U = np.array([30, 255, 255], np.uint8)
+YELLOW_L = np.array([80, 10, 200], np.uint8)
+YELLOW_U = np.array([110, 255, 255], np.uint8)
 
 BLUE_L = np.array([100, 150, 50], np.uint8)
 BLUE_U = np.array([130, 255, 255], np.uint8)
