@@ -90,8 +90,9 @@ class Grid:
             circles = np.uint16(np.around(circles))
             for x, y, r in circles[0]:
 
-                if x < self.start_rect[0] - 20 or x > self.end_rect[0] + 20 or y < self.start_rect[0] - 20 or y > self.end_rect[1] + 20:
-                    continue
+                #TODO: fix boundaries
+                #if x < self.start_rect[0] - 20 or x > self.end_rect[0] + 20 or y < self.start_rect[0] - 20 or y > self.end_rect[1] + 20:
+                #    continue
 
                 # Draw a cross at (x, y)
                 cross_size = 5
