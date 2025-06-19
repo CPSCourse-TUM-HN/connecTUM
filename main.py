@@ -408,6 +408,12 @@ def play_game(shared_dict):
     while 'grid_ready' not in shared_dict or not shared_dict['grid_ready']:
         pass
     print("Camera ready, game starting!")
+
+    # HARDWARE INITIALIZATION
+    send_integer(4)
+    send_integer(7)
+    send_integer(100)
+
     while not game_over:
         #current_grid = shared_dict['current_grid'].copy()
         pretty_print_board(board)
@@ -429,6 +435,9 @@ def play_game(shared_dict):
         else:
             col = play_alg[mode](board)
             game_over = play_turn(board, col, BOT_PIECE)
+            send_integer(col)
+            send_integer(200)
+            send_integer(100)
             if game_over:
                 winner = BOT_PIECE
 
@@ -447,6 +456,22 @@ def play_game(shared_dict):
 def camera_processing(grid, shared_dict):
     Camera.start_image_processing(grid, shared_dict)
 
+# HARDWARE INITIALIZATION
+import serial
+import time
+
+serial_port = '/dev/ttyUSB0'
+baud_rate = 9600
+timeout_sec = 2
+
+def send_integer(number):
+    try:
+        with serial.Serial(serial_port, baud_rate, timeout=timeout_sec) as ser:
+            time.sleep(2)
+            ser.write((str(number)).encode('utf-8'))
+    except serial.SerialException as e:
+        print(f"Serial error: {e}")
+
 if __name__ == "__main__":
     manager = Manager()
     shared_dict = manager.dict()
@@ -457,4 +482,4 @@ if __name__ == "__main__":
     camera_process.start()
     play_game(shared_dict)
     camera_process.join()
-    # train()
+    # train()Details: und nicht wie hier
