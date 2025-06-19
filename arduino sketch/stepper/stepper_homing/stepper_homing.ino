@@ -67,6 +67,8 @@ void setup() {
 
   coinDropperServo.attach(coinDropperServoPin);
   coinDropperServo.write(30);
+
+  delay(50);
 }
 
 int pos = 0;
@@ -84,12 +86,14 @@ void loop() {
 
     if(pos == 100) {
       coinDispenserServo.write(80);
-      delay(2000);
+      delay(1500);
       coinDispenserServo.write(170);
     } else if(pos == 200) {
       coinDropperServo.write(130);
-      delay(2000);
+      delay(1500);
       coinDropperServo.write(30);
+      delay(1000);
+      stepper.runToNewDistance(((7%8) * 26) + 50); // go to loader position
     } else {
       dest = (pos%tileCount) * tileWidth;
       if(pos == 7) dest += loaderOffset;
