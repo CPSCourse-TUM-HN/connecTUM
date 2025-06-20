@@ -2,7 +2,7 @@ from picamera2 import Picamera2
 import cv2
 import numpy as np
 
-import grid as grid
+from camera_grid import Grid
 from modules import grid_detection_param as param
 
 class Camera:
@@ -112,5 +112,5 @@ class Camera:
                 shared_dict['grid_ready'] = True
 
 if __name__ == "__main__":
-    g = grid.Grid(5, 0.3)
+    g = Grid(5, 0.3)
     Camera.start_image_processing(g, {})

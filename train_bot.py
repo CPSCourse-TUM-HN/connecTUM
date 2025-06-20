@@ -3,23 +3,26 @@ import itertools
 from time import time
 import multiprocessing as mp
 import sys # For command line args
-from connect4 import Position, Solver
+from connect4_alg import Position, Solver
+import modules.board_param as param
 
 SENTINEL = None
 
+def board2key(board):
+    return "".join(map(str, board.flatten()))
 
 def ret_game_states():
-    for start_piece in (BOT_PIECE, PLAYER_PIECE):
-        piece = itertools.cycle([BOT_PIECE, PLAYER_PIECE])
-        if start_piece is PLAYER_PIECE: next(piece)
-        n_turns_rng = range(0, 41, 2) if start_piece is BOT_PIECE else range(1,42,2)
+    for start_piece in (param.BOT_PIECE, param.PLAYER_PIECE):
+        piece = itertools.cycle([param.BOT_PIECE, param.PLAYER_PIECE])
+        if start_piece is param.PLAYER_PIECE: next(piece)
+        n_turns_rng = range(0, 41, 2) if start_piece is param.BOT_PIECE else range(1,42,2)
 
         for n_turns in n_turns_rng:
-            move_seqs = (seq for seq in itertools.product(range(COLUMN_COUNT), repeat=n_turns))
+            move_seqs = (seq for seq in itertools.product(range(param.COLUMN_COUNT), repeat=n_turns))
             for move_seq in move_seqs:
-                board = create_board()
+                board = Board()
                 for col in move_seq:
-                    if not is_valid_location(board, col):
+                    if not board.is_valid_location(col):
                         break
                     game_over = play_turn(board, col, next(piece), display_board=False)
                     if game_over:
@@ -28,11 +31,11 @@ def ret_game_states():
                 yield board
 
         for n_turns in n_turns_rng:
-            board = create_board()
-            unfilled_cols = list(range(COLUMN_COUNT))
+            board = Board()
+            unfilled_cols = list(range(param.COLUMN_COUNT))
             for i in range(n_turns):
                 for col in unfilled_cols:
-                    if not is_valid_location(board, col):
+                    if not board.is_valid_location(col):
                         unfilled_cols.remove(col)
                         continue
 
@@ -73,20 +76,20 @@ def combinations_with_max_repeats(iterable, r, max_repeats):
     
     yield from generate_combinations(0, [], r, {})
 
-def get_game_states(min_n_turns=0, max_n_turns= ROW_COUNT * COLUMN_COUNT):
+def get_game_states(min_n_turns=0, max_n_turns= param.ROW_COUNT * param.COLUMN_COUNT):
     """Generator of valid board game states"""
 
-    cols = [i for i in range(COLUMN_COUNT)]
+    cols = [i for i in range(param.COLUMN_COUNT)]
     for n_turns in range(min_n_turns, max_n_turns):
     # for n_turns in range(2):
         print("\x1b[1;31m" + str(n_turns) + "\033[0m")
-        for combo in combinations_with_max_repeats(cols, n_turns, ROW_COUNT):
+        for combo in combinations_with_max_repeats(cols, n_turns, param.ROW_COUNT):
             n_bot_moves = n_turns // 2
             all_combinations = itertools.combinations(range(len(combo)), n_bot_moves)
             for bot_indices in all_combinations:
-                board = create_board()
+                board = Board()
                 for turn, col in enumerate(combo):
-                    piece = BOT_PIECE if (turn in bot_indices) else PLAYER_PIECE
+                    piece = param.BOT_PIECE if (turn in bot_indices) else param.PLAYER_PIECE
                     play_turn(board, col, piece, display_board=False)
                 yield board
         
@@ -136,7 +139,7 @@ def collector(result_queue, num_workers, output_file):
 if (__name__ == "__main__"):
     if (len(sys.argv) == 1):
         min_n_turns = 0
-        max_n_turns = ROW_COUNT * COLUMN_COUNT
+        max_n_turns = param.ROW_COUNT * param.COLUMN_COUNT
     elif (len(sys.argv) == 3):
         try:
             min_n_turns = int(sys.argv[1])

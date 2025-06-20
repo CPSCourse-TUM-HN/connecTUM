@@ -1,4 +1,5 @@
 from main import *
+import modules.board_param as param
 
 if __name__ == "__main__":
     lookup_table_loc = 'lookup_table.json'
@@ -12,7 +13,7 @@ if __name__ == "__main__":
         lookup_table = dict()
 
 
-    board = create_board()
+    board = Board()
     game_over = False
     
     while True:
@@ -33,33 +34,33 @@ if __name__ == "__main__":
     mode = 'impossible'
 
     winner = 0
-    pretty_print_board(board)
+    board.pretty_print_board()
     while not game_over:
         if turn == 0:
             valid_move = False
             while not valid_move:
                 try:
                     col = int(input("Player 1 Make your Selection (0-6): "))
-                    if 0 <= col < COLUMN_COUNT and is_valid_location(board, col):
+                    if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
                         valid_move = True
                     else:
                         print("Invalid column. Try again.")
                 except ValueError:
                     print("Please enter a valid integer between 0 and 6.")
-            game_over = play_turn(board, col, PLAYER_PIECE)
-            pretty_print_board(board)
+            game_over = play_turn(board, col, param.PLAYER_PIECE)
+            board.pretty_print_board()
             if game_over:
-                winner = PLAYER_PIECE
+                winner = param.PLAYER_PIECE
         else:
             col = play_alg[mode](board)
-            game_over = play_turn(board, col, BOT_PIECE)
+            game_over = play_turn(board, col, param.BOT_PIECE)
             if game_over:
-                winner = BOT_PIECE
-            pretty_print_board(board)
-        if len(get_valid_locations(board)) == 0 and not game_over:
-            pretty_print_board(board)
+                winner = param.BOT_PIECE
+            board.pretty_print_board()
+        if len(board.get_valid_locations()) == 0 and not game_over:
+            board.pretty_print_board()
             print("Game is a draw!")
             game_over = True
-            winner = PLAYER_PIECE
+            winner = param.PLAYER_PIECE
         turn ^= 1  # Switch turns
-    print_final_score(board, winner)
+    board.print_final_score(winner)
