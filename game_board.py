@@ -34,7 +34,7 @@ class Board:
 	def get_valid_locations(self):
 		valid_locations = []
 		for col in range(param.COLUMN_COUNT):
-			if self.is_valid_location(self.board, col):
+			if self.is_valid_location(col):
 				valid_locations.append(col)
 
 		return valid_locations
@@ -87,30 +87,31 @@ class Board:
 		for row in range(param.ROW_COUNT):
 			if self.board[row][col] == 0:
 				self.board[row][col] = piece
+				break
 
 	def winning_move(self, piece):
 		# Check valid horizontal locations for win
-		for c in range(param.param.COLUMN_COUNT - param.param.WINDOW_LENGTH + 1):
-			for r in range(param.param.ROW_COUNT):
-				if all(self.board[r][c + i] == piece for i in range(param.param.WINDOW_LENGTH)):
+		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
+			for r in range(param.ROW_COUNT):
+				if all(self.board[r][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# Check valid vertical locations for win
-		for c in range(param.param.COLUMN_COUNT):
-			for r in range(param.param.ROW_COUNT - param.param.WINDOW_LENGTH + 1):
-				if all(self.board[r + i][c] == piece for i in range(param.param.WINDOW_LENGTH)):
+		for c in range(param.COLUMN_COUNT):
+			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
+				if all(self.board[r + i][c] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# Check valid positive diagonal locations for win
-		for c in range(param.param.COLUMN_COUNT - param.param.WINDOW_LENGTH + 1):
-			for r in range(param.param.ROW_COUNT - param.param.WINDOW_LENGTH + 1):
-				if all(self.board[r + i][c + i] == piece for i in range(param.param.WINDOW_LENGTH)):
+		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
+			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
+				if all(self.board[r + i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# check valid negative diagonal locations for win
-		for c in range(param.param.COLUMN_COUNT - param.param.WINDOW_LENGTH + 1):
-			for r in range(param.param.WINDOW_LENGTH - 1, param.param.ROW_COUNT):
-				if all(self.board[r - i][c + i] == piece for i in range(param.param.WINDOW_LENGTH)):
+		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
+			for r in range(param.WINDOW_LENGTH - 1, param.ROW_COUNT):
+				if all(self.board[r - i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		return False
@@ -119,7 +120,7 @@ class Board:
 		score = 0
 
 		# Score centre column
-		centre_array = [int(i) for i in list(self.board[:, param.param.COLUMN_COUNT // 2])]
+		centre_array = [int(i) for i in list(self.board[:, param.COLUMN_COUNT // 2])]
 		centre_count = centre_array.count(piece)
 		score += centre_count * (param.WINDOW_LENGTH - 1)
 

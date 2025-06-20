@@ -1,5 +1,4 @@
 from main import *
-import modules.board_param as param
 
 if __name__ == "__main__":
     lookup_table_loc = 'lookup_table.json'
@@ -52,15 +51,17 @@ if __name__ == "__main__":
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
-            col = play_alg[mode](board)
+            col = play_alg[mode](board.board)
             game_over = play_turn(board, col, param.BOT_PIECE)
             if game_over:
                 winner = param.BOT_PIECE
             board.pretty_print_board()
+
         if len(board.get_valid_locations()) == 0 and not game_over:
             board.pretty_print_board()
             print("Game is a draw!")
             game_over = True
             winner = param.PLAYER_PIECE
         turn ^= 1  # Switch turns
+
     board.print_final_score(winner)
