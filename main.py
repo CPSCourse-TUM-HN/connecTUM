@@ -436,9 +436,9 @@ def play_game(shared_dict):
             col = play_alg[mode](board)
             game_over = play_turn(board, col, BOT_PIECE)
             send_integer(col)
-            time.sleep(6)
+            #time.sleep(6)
             send_integer(200)
-            time.sleep(10)
+            #time.sleep(10)
             send_integer(100)
             if game_over:
                 winner = BOT_PIECE
