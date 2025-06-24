@@ -4,15 +4,15 @@ import modules.board_param as param
 class Board:
 	def __init__(self, *args):
 		if len(args) == 1 and isinstance(args[0], np.ndarray) and args[0].ndim == 2:
-			self.board = args[0]
+			self.board_array = args[0]
 			self.score = self.score_position(param.PLAYER_PIECE)
 		else:
-			self.board = np.zeros((param.ROW_COUNT, param.COLUMN_COUNT), dtype=np.int8)
+			self.board_array = np.zeros((param.ROW_COUNT, param.COLUMN_COUNT), dtype=np.int8)
 			self.score = 0
 		
 
 	def pretty_print_board(self):
-		flipped_board = np.flipud(self.board)
+		flipped_board = np.flipud(self.board_array)
 
 		print("\033[0;37;41m 0 \033[0;37;41m 1 \033[0;37;41m 2 \033[0;37;41m 3 \033[0;37;41m 4 \033[0;37;41m 5 \033[0;37;41m 6 \033[0m")
 		for i in flipped_board:
@@ -40,14 +40,14 @@ class Board:
 		return valid_locations
 	
 	def is_valid_location(self, col):
-		return self.board[param.ROW_COUNT - 1][col] == 0
+		return self.board_array[param.ROW_COUNT - 1][col] == 0
 
 	def is_valid_board(self):
 		# For each column, check that there are no empty cells below a filled cell
 		for col in range(param.COLUMN_COUNT):
 			found_empty = False
 			for row in range(param.ROW_COUNT):
-				if self.board[row][col] == 0:
+				if self.board_array[row][col] == 0:
 					found_empty = True
 				elif found_empty:
 					# Found a token above an empty cell, invalid board
@@ -63,13 +63,13 @@ class Board:
 			return None
 
 		# The new board must have exactly one more token than the old board
-		old_count = np.count_nonzero(self.board)
+		old_count = np.count_nonzero(self.board_array)
 		new_count = np.count_nonzero(new_board)
 		if new_count != old_count + 1:
 			return None
 
 		# Find the difference between the boards
-		diff = new_board.board - self.board
+		diff = new_board.board_array - self.board_array
 		changed_positions = np.argwhere(diff != 0)
 
 		# There must be exactly one changed position
@@ -85,33 +85,33 @@ class Board:
 
 	def drop_piece(self, col, piece):
 		for row in range(param.ROW_COUNT):
-			if self.board[row][col] == 0:
-				self.board[row][col] = piece
+			if self.board_array[row][col] == 0:
+				self.board_array[row][col] = piece
 				break
 
 	def winning_move(self, piece):
 		# Check valid horizontal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.ROW_COUNT):
-				if all(self.board[r][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(self.board_array[r][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# Check valid vertical locations for win
 		for c in range(param.COLUMN_COUNT):
 			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
-				if all(self.board[r + i][c] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(self.board_array[r + i][c] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# Check valid positive diagonal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
-				if all(self.board[r + i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(self.board_array[r + i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		# check valid negative diagonal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.WINDOW_LENGTH - 1, param.ROW_COUNT):
-				if all(self.board[r - i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(self.board_array[r - i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
 					return True
 
 		return False
@@ -120,13 +120,13 @@ class Board:
 		score = 0
 
 		# Score centre column
-		centre_array = [int(i) for i in list(self.board[:, param.COLUMN_COUNT // 2])]
+		centre_array = [int(i) for i in list(self.board_array[:, param.COLUMN_COUNT // 2])]
 		centre_count = centre_array.count(piece)
 		score += centre_count * (param.WINDOW_LENGTH - 1)
 
 		# Score horizontal positions
 		for r in range(param.ROW_COUNT):
-			row_array = [int(i) for i in list(self.board[r, :])]
+			row_array = [int(i) for i in list(self.board_array[r, :])]
 			for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 				# Create a horizontal window of 4
 				window = row_array[c:c + param.WINDOW_LENGTH]
@@ -134,7 +134,7 @@ class Board:
 
 		# Score vertical positions
 		for c in range(param.COLUMN_COUNT):
-			col_array = [int(i) for i in list(self.board[:, c])]
+			col_array = [int(i) for i in list(self.board_array[:, c])]
 			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
 				# Create a vertical window of 4
 				window = col_array[r:r + param.WINDOW_LENGTH]
@@ -144,14 +144,14 @@ class Board:
 		for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
 			for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 				# Create a positive diagonal window of 4
-				window = [self.board[r + i][c + i] for i in range(param.WINDOW_LENGTH)]
+				window = [self.board_array[r + i][c + i] for i in range(param.WINDOW_LENGTH)]
 				score += Board.evaluate_window(window, piece)
 
 		# Score negative diagonals
 		for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
 			for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 				# Create a negative diagonal window of 4
-				window = [self.board[r + param.WINDOW_LENGTH - 1 - i][c + i] for i in range(param.WINDOW_LENGTH)]
+				window = [self.board_array[r + param.WINDOW_LENGTH - 1 - i][c + i] for i in range(param.WINDOW_LENGTH)]
 				score += Board.evaluate_window(window, piece)
 
 		self.score = score
@@ -182,8 +182,8 @@ class Board:
 		return score
 
 	def compute_score(self, winner):
-		moves_played = int(np.sum(self.board != 0))
-		max_moves = self.board.shape[0] * self.board.shape[1]
+		moves_played = int(np.sum(self.board_array != 0))
+		max_moves = self.board_array.shape[0] * self.board_array.shape[1]
 		if winner == param.BOT_PIECE:
 			score = moves_played
 		else:

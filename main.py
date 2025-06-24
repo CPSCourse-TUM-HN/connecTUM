@@ -83,7 +83,7 @@ def play_game(shared_dict):
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
-            col = play_alg[mode](board.board)
+            col = play_alg[mode](board.board_array)
             game_over = play_turn(board, col, param.BOT_PIECE)
             send_integer(col)
             time.sleep(6)
