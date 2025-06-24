@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-import time
+
 import multiprocessing as mp
 from multiprocessing import Manager
 
@@ -167,7 +167,6 @@ if __name__ == "__main__":
 
     if not args.no_motors and not args.t:
         import serial
-        import time
     else:
         no_motors = True
         print("No motors")

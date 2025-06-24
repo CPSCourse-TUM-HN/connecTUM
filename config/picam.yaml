@@ -3,7 +3,7 @@ CAMERA: 2  # 0: BUILT_IN_WEBCAM, 1: EXTERNAL_WEBCAM, 2: PI_CAMERA
 
 # Color detection mode
 COLOR_MODE: 0   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
-REF_IMAGE: "opencv test/try_irl.jpg"
+REF_IMAGE: "assets/reference_image.jpg"
 
 # GUI Flavour
 GUI_FLAVOUR: "BASIC" # NO_GUI, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
@@ -20,14 +20,8 @@ camera_options:
 RED_L: [105, 200, 180]
 RED_U: [125, 255, 255]
 
-RED_HR_L: [160, 110, 110]
-RED_HR_U: [180, 255, 255]
-
 YELLOW_L: [80, 10, 200]
 YELLOW_U: [110, 255, 255]
-
-BLUE_L: [100, 150, 50]
-BLUE_U: [130, 255, 255]
 
 # Noise red range
 RED_NOISE_L: [0, 15, 0]

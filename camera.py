@@ -43,13 +43,13 @@ class Camera:
         
         # GUI configuration
         if self.config.GUI_FLAVOUR == "TKINTER":
-            import tkinter_gui as tk_gui
+            import gui.tkinter_gui as tk_gui
             self.gui = tk_gui
         elif self.config.GUI_FLAVOUR == "DPG":
-            import dpg_gui as dpg_gui
+            import gui.dpg_gui as dpg_gui
             self.gui = dpg_gui
         elif self.config.GUI_FLAVOUR == "PYQT":
-            import pyqt_gui as pyqt_gui
+            import gui.pyqt_gui as pyqt_gui
             self.gui = pyqt_gui
         else:
             self.gui = None
@@ -108,12 +108,15 @@ class Camera:
             self.gui.destroy()
 
     def analyse_image(self, image, grid):
-        original_img = image.copy()
-
         # Flip image if using webcam
         if self.config.CAMERA == param.BUILT_IN_WEBCAM:
             image = cv2.flip(image, 1)
-        elif self.config.CAMERA == param.PI_CAMERA:
+
+        # Copy the original image
+        original_img = image.copy()
+
+        # Put back the original image to RGB if needed
+        if self.config.CAMERA == param.PI_CAMERA:
             original_img = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGRA)
 
         # Retrieve option info
@@ -218,7 +221,7 @@ class Camera:
                 print(err)
                 exit(1)
 
-            if shared_dict["game_over"] or cv2.waitKey(10) & 0xFF == ord('q'):
+            if "game_over" in shared_dict and shared_dict["game_over"] or cv2.waitKey(10) & 0xFF == ord('q'):
                 self.destroy()
                 break
 
