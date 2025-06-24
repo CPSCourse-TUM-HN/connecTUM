@@ -401,7 +401,7 @@ def play_game(shared_dict):
         'hard': hard_play,
         'impossible': lambda board: optimal_play(board, lookup_table),
     }
-    mode = 'impossible'
+    mode = 'hard'
     winner = 0
     # Wait for camera to start producing data
     print("Waiting for camera to initialize...")

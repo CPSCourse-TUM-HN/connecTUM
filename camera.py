@@ -1,4 +1,5 @@
 from picamera2 import Picamera2
+from libcamera import Transform
 import cv2
 import numpy as np
 
@@ -54,7 +55,7 @@ class Camera:
 
         # Masks
         yellow_mask = cv2.inRange(hsv_frame, param.YELLOW_L, param.YELLOW_U)
-        red_mask = cv2.inRange(hsv_frame, param.RED_L, param.RED_U) | cv2.inRange(hsv_frame, param.RED_HR_L, param.RED_HR_U)
+        red_mask = cv2.inRange(hsv_frame, param.RED_L, param.RED_U) #| cv2.inRange(hsv_frame, param.RED_HR_L, param.RED_HR_U)
 
         # Subtract the noise from the red mask
         #red_noise_mask = cv2.inRange(hsv_frame, param.RED_NOISE_L, param.RED_NOISE_U)
@@ -74,7 +75,7 @@ class Camera:
 
         # Detect and map red (1) and yellow (2) circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
-        grid.show(cell_size=40)
+        grid.show(cell_size=120)
 
         #cv2.imshow("Original", image)
         #cv2.resizeWindow("ConnecTUM", 50, 50)
@@ -85,7 +86,7 @@ class Camera:
     @staticmethod
     def start_image_processing(g, shared_dict):
         picam2 = Picamera2()
-        picam2.configure(picam2.create_video_configuration())
+        picam2.configure(picam2.create_video_configuration(transform=Transform(vflip=False)))
         picam2.start()
 
         while True:
@@ -112,5 +113,5 @@ class Camera:
                 shared_dict['grid_ready'] = True
 
 if __name__ == "__main__":
-    g = grid.Grid(5, 0.3)
+    g = grid.Grid(30, 0.3)
     Camera.start_image_processing(g, {})

@@ -11,23 +11,23 @@ BOARD_HEIGHT = 139
 CIRCLE_RADIUS = 8.75
 PADDING_TOP = 7
 PADDING_SIDE = 7.75
-DESCALE_FACTOR = 1
+DESCALE_FACTOR = 0
 
 ROWS = 6
 COLUMNS = 7
 
 # Color Ranges
-RED_L = np.array([105, 200, 180], np.uint8)
-RED_U = np.array([125, 255, 255], np.uint8)
+RED_L = np.array([105, 180, 180], np.uint8)
+RED_U = np.array([120, 255, 255], np.uint8)
 
-RED_HR_L = np.array([160, 110, 110], np.uint8)
-RED_HR_U = np.array([180, 255, 255], np.uint8)
+RED_HR_L = np.array([150, 110, 110], np.uint8)
+RED_HR_U = np.array([170, 255, 255], np.uint8)
 
 YELLOW_L = np.array([80, 10, 200], np.uint8)
 YELLOW_U = np.array([110, 255, 255], np.uint8)
 
-BLUE_L = np.array([100, 150, 50], np.uint8)
-BLUE_U = np.array([130, 255, 255], np.uint8)
+BLUE_L = np.array([90, 140, 40], np.uint8)
+BLUE_U = np.array([140, 255, 255], np.uint8)
 
 # Noise red range
 RED_NOISE_L = np.array([0, 15, 0], np.uint8)    # low saturation, low value
