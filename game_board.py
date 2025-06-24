@@ -5,10 +5,8 @@ class Board:
 	def __init__(self, *args):
 		if len(args) == 1 and isinstance(args[0], np.ndarray) and args[0].ndim == 2:
 			self.board_array = args[0]
-			self.score = self.score_position(param.PLAYER_PIECE)
 		else:
 			self.board_array = np.zeros((param.ROW_COUNT, param.COLUMN_COUNT), dtype=np.int8)
-			self.score = 0
 		
 
 	def pretty_print_board(self):
@@ -32,6 +30,9 @@ class Board:
 		print("\033[0;37;41m 0 \033[0;37;41m 1 \033[0;37;41m 2 \033[0;37;41m 3 \033[0;37;41m 4 \033[0;37;41m 5 \033[0;37;41m 6 \033[0m")
 
 	def get_valid_locations(self):
+		"""
+		Returns list of valid columns that can be played
+		"""
 		valid_locations = []
 		for col in range(param.COLUMN_COUNT):
 			if self.is_valid_location(col):
@@ -154,7 +155,7 @@ class Board:
 				window = [self.board_array[r + param.WINDOW_LENGTH - 1 - i][c + i] for i in range(param.WINDOW_LENGTH)]
 				score += Board.evaluate_window(window, piece)
 
-		self.score = score
+		return score
 
 	@staticmethod
 	def evaluate_window(window, piece):
@@ -195,7 +196,7 @@ class Board:
 		self.compute_score(winner)
 		print(f"Final score for your game: {self.score}")
 
-	def play_turn(self, col, piece, display_board=True):
+	def play_turn(self, col: int, piece, display_board=True):
 		if 0 <= col < param.COLUMN_COUNT and self.is_valid_location(col):
 			self.drop_piece(col, piece)
 			if self.winning_move(piece):

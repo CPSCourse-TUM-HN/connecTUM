@@ -2,6 +2,8 @@ import random
 
 import modules.board_param as param
 from connect4_alg import Position, Solver
+from game_board import Board
+from copy import deepcopy
 
 def board2key(board_arr):
     """
@@ -12,11 +14,11 @@ def board2key(board_arr):
     """
     return "".join(map(str, board_arr.flatten()))
 
-def is_terminal_node(board):
-    return board.winning_move(param.PLAYER_PIECE) or board.winning_move(param.BOT_PIECE) or len(board.get_valid_location()) == 0
+def is_terminal_node(board: Board):
+    return board.winning_move(param.PLAYER_PIECE) or board.winning_move(param.BOT_PIECE) or len(board.get_valid_locations()) == 0
 
-def minimax(board, depth, alpha, beta, maximisingPlayer):
-    valid_locations = board.get_valid_location()
+def minimax(board: Board, depth, alpha, beta, maximisingPlayer):
+    valid_locations = board.get_valid_locations()
 
     is_terminal = is_terminal_node(board)
     if depth == 0 or is_terminal:
@@ -39,7 +41,7 @@ def minimax(board, depth, alpha, beta, maximisingPlayer):
         column = random.choice(valid_locations)
         for col in valid_locations:
             # Create a copy of the board
-            b_copy = board.copy()
+            b_copy = deepcopy(board)
             # Drop a piece in the temporary board and record score
             b_copy.drop_piece(col, param.BOT_PIECE)
             new_score = minimax(b_copy, depth - 1, alpha, beta, False)[1]
@@ -58,7 +60,7 @@ def minimax(board, depth, alpha, beta, maximisingPlayer):
         column = random.choice(valid_locations)
         for col in valid_locations:
             # Create a copy of the board
-            b_copy = board.copy()
+            b_copy = deepcopy(board)
             # Drop a piece in the temporary board and record score
             b_copy.drop_piece(col, param.PLAYER_PIECE)
             new_score = minimax(b_copy, depth - 1, alpha, beta, True)[1]

@@ -50,13 +50,13 @@ if __name__ == "__main__":
                         print("Invalid column. Try again.")
                 except ValueError:
                     print("Please enter a valid integer between 0 and 6.")
-            game_over = board.play_turn(board, col, param.PLAYER_PIECE)
+            game_over = board.play_turn(col, param.PLAYER_PIECE)
             board.pretty_print_board()
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
             col = play_alg[mode](board)
-            game_over = board.play_turn(board, col, param.BOT_PIECE)
+            game_over = board.play_turn(col, param.BOT_PIECE)
             if game_over:
                 winner = param.BOT_PIECE
             board.pretty_print_board()
