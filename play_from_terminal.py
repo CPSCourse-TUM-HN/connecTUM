@@ -51,7 +51,7 @@ if __name__ == "__main__":
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
-            col = play_alg[mode](board.board_array)
+            col = play_alg[mode](board)
             game_over = play_turn(board, col, param.BOT_PIECE)
             if game_over:
                 winner = param.BOT_PIECE
