@@ -5,6 +5,13 @@
 #define dirPin 4
 #define stepPin 2
 #define limitSwitchPin 13
+#define coinDispenserServoPin 26
+#define coinDropperServoPin 14
+#define tileWidth 26 //mm
+#define loaderOffset 50 //mm after the last column (to go to loader)
+#define tileCount 8 //including loader as last position
+#define loaderPosition 7 // as index 
+#define homeOffset 4 //mm distance between home click and actual 0 position (over 0th column)
 
 // to fix access to tty0
 // sudo chmod a+rw /dev/ttyUSB0
@@ -17,30 +24,35 @@ static bool get_homingComplete() {
   interrupts();
   return val;
 }
-
+static void set_homingComplete(bool val) {
+  noInterrupts();
+  homingComplete = val;
+  interrupts();
+}
+// Servo
+Servo coinDispenserServo;
+Servo coinDropperServo;
 AccelStepperWithDistance stepper(AccelStepperWithDistance::DRIVER, stepPin, dirPin);
 
 void handleLimitSwitch() {
-  if (digitalRead(limitSwitchPin) == LOW) {  // Confirm switch state
+  if (!get_homingComplete() && digitalRead(limitSwitchPin) == LOW) {  // Confirm switch state
     stepper.stop();
     stepper.setCurrentPosition(0);          // Set home position
-    noInterrupts();
-    homingComplete = true;
-    interrupts();
+    set_homingComplete(true);
   }
 }
-
-// Servo
-const int coinDispenserServoPin = 26;
-Servo coinDispenserServo;
-const int coinDropperServoPin = 14;
-Servo coinDropperServo;
 
 void setup() {
   Serial.begin(9600);
 
   pinMode(limitSwitchPin, INPUT_PULLUP);
   attachInterrupt(limitSwitchPin, handleLimitSwitch, FALLING);
+
+  coinDispenserServo.attach(coinDispenserServoPin);
+  coinDispenserServo.write(170);
+
+  coinDropperServo.attach(coinDropperServoPin);
+  coinDropperServo.write(30);
 
   stepper.setMaxSpeed(36000);
   stepper.setAcceleration(20000);
@@ -54,29 +66,16 @@ void setup() {
     stepper.runSpeed();
   }
   
-  // Back off from switch (10mm) and reset home
+  // Back off from switch to actual 0 position
   Serial.println("back off");
-  stepper.moveToDistance(10);
-  while (stepper.distanceToGo() != 0) {
-    stepper.run();
-  }
-  stepper.setCurrentPosition(0);  // New home position
-
-  coinDispenserServo.attach(coinDispenserServoPin);
-  coinDispenserServo.write(170);
-
-  coinDropperServo.attach(coinDropperServoPin);
-  coinDropperServo.write(30);
+  stepper.runToNewDistance(homeOffset);
+  stepper.setCurrentPosition(0);
 
   delay(50);
 }
 
 int pos = 0;
 int dest = 0;
-int tileWidth=26; //mm
-float loaderOffset = 50; //mm after the last column (to go to loader)
-int tileCount = 8; //including loader as last position
-
 
 void loop() {
   // upon bytes available in the serial interface
@@ -93,7 +92,7 @@ void loop() {
       delay(1500);
       coinDropperServo.write(30);
       delay(1000);
-      stepper.runToNewDistance(((7%8) * 26) + 50); // go to loader position
+      stepper.runToNewDistance((loaderPosition * tileWidth) + loaderOffset); // go to loader position
     } else {
       dest = (pos%tileCount) * tileWidth;
       if(pos == 7) dest += loaderOffset;
