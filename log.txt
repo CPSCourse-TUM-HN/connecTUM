@@ -1,0 +1,14 @@
+Loaded lookup table lookup_table.json.
+Waiting for camera to initialize...
+Camera ready, game starting!
+Serial error: [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'
+Serial error: [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'
+Serial error: [Errno 2] could not open port /dev/ttyUSB0: [Errno 2] No such file or directory: '/dev/ttyUSB0'
+[0;37;41m 0 [0;37;41m 1 [0;37;41m 2 [0;37;41m 3 [0;37;41m 4 [0;37;41m 5 [0;37;41m 6 [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0;37;45m   [0m
+[0;37;41m 0 [0;37;41m 1 [0;37;41m 2 [0;37;41m 3 [0;37;41m 4 [0;37;41m 5 [0;37;41m 6 [0m

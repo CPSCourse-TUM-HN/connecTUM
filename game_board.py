@@ -69,7 +69,7 @@ class Board:
 			return None
 
 		# Find the difference between the boards
-		diff = new_board - self.board
+		diff = new_board.board - self.board
 		changed_positions = np.argwhere(diff != 0)
 
 		# There must be exactly one changed position
