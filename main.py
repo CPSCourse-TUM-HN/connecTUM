@@ -20,16 +20,6 @@ serial_port = '/dev/ttyUSB0'
 baud_rate = 9600
 timeout_sec = 2
 
-def play_turn(board, col, piece, display_board=True):
-    if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
-        board.drop_piece(col, piece)
-        if board.winning_move(piece):
-            if display_board:
-                board.pretty_print_board()
-                print(f"{'PLAYER 1' if piece == param.PLAYER_PIECE else 'BOT'} WINS!")
-            return True  # Game over
-    return False  # Game continues
-
 def play_game(shared_dict):
     lookup_table_loc = 'lookup_table.json'
 
@@ -79,12 +69,12 @@ def play_game(shared_dict):
                 if col is not None:
                     valid_move = True
                     # shared_dict['last_player_move'] = col  # Store the move
-            game_over = play_turn(board, col, param.PLAYER_PIECE)
+            game_over = board.play_turn(col, param.PLAYER_PIECE)
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
             col = play_alg[mode](board.board_array)
-            game_over = play_turn(board, col, param.BOT_PIECE)
+            game_over = board.play_turn(col, param.BOT_PIECE)
             send_integer(col)
             time.sleep(6)
             send_integer(200)

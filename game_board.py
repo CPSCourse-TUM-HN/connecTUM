@@ -194,3 +194,13 @@ class Board:
 	def print_final_score(self, winner):
 		self.compute_score(winner)
 		print(f"Final score for your game: {self.score}")
+
+	def play_turn(self, col, piece, display_board=True):
+		if 0 <= col < param.COLUMN_COUNT and self.is_valid_location(col):
+			self.drop_piece(col, piece)
+			if self.winning_move(piece):
+				if display_board:
+					self.pretty_print_board()
+					print(f"{'PLAYER 1' if piece == param.PLAYER_PIECE else 'BOT'} WINS!")
+				return True  # Game over
+		return False  # Game continues

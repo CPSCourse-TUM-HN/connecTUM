@@ -24,7 +24,7 @@ def ret_game_states():
                 for col in move_seq:
                     if not board.is_valid_location(col):
                         break
-                    game_over = play_turn(board, col, next(piece), display_board=False)
+                    game_over = board.play_turn(board, col, next(piece), display_board=False)
                     if game_over:
                         break
             else: # no break - valid playable game state
@@ -90,7 +90,7 @@ def get_game_states(min_n_turns=0, max_n_turns= param.ROW_COUNT * param.COLUMN_C
                 board = Board()
                 for turn, col in enumerate(combo):
                     piece = param.BOT_PIECE if (turn in bot_indices) else param.PLAYER_PIECE
-                    play_turn(board, col, piece, display_board=False)
+                    board.play_turn(board, col, piece, display_board=False)
                 yield board
         
 
