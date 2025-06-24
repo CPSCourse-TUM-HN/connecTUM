@@ -1,4 +1,8 @@
-from main import *
+import os
+import json
+from plays import *
+from game_board import Board
+import modules.board_param as param
 
 if __name__ == "__main__":
     lookup_table_loc = 'lookup_table.json'
