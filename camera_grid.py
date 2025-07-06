@@ -90,13 +90,13 @@ class Grid:
             circles = np.uint16(np.around(circles))
             for x, y, r in circles[0]:
 
-                #TODO: fix boundaries
-                #if x < self.start_rect[0] - 20 or x > self.end_rect[0] + 20 or y < self.start_rect[0] - 20 or y > self.end_rect[1] + 20:
-                #    continue
+                scaled_radius = round(param.CIRCLE_RADIUS*self.scale_ratio)
+                if x < self.start_rect[0] - scaled_radius or y < self.start_rect[1] - scaled_radius or x > self.end_rect[0] + scaled_radius or y > self.end_rect[1] + scaled_radius:
+                   continue
 
                 # Draw a cross at (x, y)
                 cross_size = 5
-                color = (0, 255, 0)
+                color = (0, 0, 255)
                 thickness = 1
                 cv2.line(img, (x - cross_size, y), (x + cross_size, y), color, thickness)
                 cv2.line(img, (x, y - cross_size), (x, y + cross_size), color, thickness)
@@ -110,13 +110,18 @@ class Grid:
                 if row < param.ROWS:
                     self.grid[row][col] = self.grid[row][col] + value
 
-    def draw_grid_mask(self, img):
+    def draw_grid_mask(self, img, outer_grid=False):
         cv2.circle(img, (self.min_circle[0], self.min_circle[1]), 2, (255, 0, 255), 2)
         cv2.circle(img, (self.min_circle[0], self.min_circle[1]), round(param.CIRCLE_RADIUS * self.scale_ratio), (255, 0, 255), 2)
         cv2.circle(img, (self.max_circle[0], self.max_circle[1]), 2, (255, 0, 255), 2)
         cv2.circle(img, (self.max_circle[0], self.max_circle[1]), round(param.CIRCLE_RADIUS * self.scale_ratio), (255, 0, 255), 2)
 
         cv2.rectangle(img, self.start_rect, self.end_rect, (255, 0, 255), 1)
+
+        if outer_grid:
+            scaled_radius = round(param.CIRCLE_RADIUS*self.scale_ratio)
+            cv2.rectangle(img, (self.start_rect[0] - scaled_radius, self.start_rect[1] - scaled_radius), (self.end_rect[0] + scaled_radius, self.end_rect[1] + scaled_radius), (255, 0, 255), 1)
+
 
     def show(self, cell_size):
         img = np.ones((param.ROWS * cell_size, param.COLUMNS * cell_size, 3), dtype=np.uint8) * 255  # white background

@@ -88,7 +88,7 @@ class Camera:
 
         # Print the grid mask
         grid_calc = image.copy()
-        grid.draw_grid_mask(grid_calc)
+        grid.draw_grid_mask(grid_calc, True)
 
         # Detect and map red (1) and yellow (2) circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
