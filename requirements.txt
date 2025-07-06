@@ -7,3 +7,4 @@ opencv-python==4.11.0.86
 pybind11==2.13.6
 setuptools==80.8.0
 picamera2==0.3.27
+pyyaml==6.0.2

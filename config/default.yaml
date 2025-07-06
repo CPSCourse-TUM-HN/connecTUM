@@ -1,0 +1,19 @@
+# Camera selection
+CAMERA: 0  # 0: BUILT_IN_WEBCAM, 1: EXTERNAL_WEBCAM, 2: PI_CAMERA
+
+# Color Ranges
+RED_L: [135, 135, 85]
+RED_U: [195, 235, 135]
+
+RED_HR_L: [135, 135, 85]
+RED_HR_U: [195, 235, 135]
+
+YELLOW_L: [15, 85, 120]
+YELLOW_U: [40, 145, 145]
+
+BLUE_L: [100, 150, 50]
+BLUE_U: [130, 255, 255]
+
+# Noise red range
+RED_NOISE_L: [0, 15, 0]
+RED_NOISE_U: [10, 255, 170]

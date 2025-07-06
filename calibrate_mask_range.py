@@ -1,11 +1,10 @@
-from picamera2 import Picamera2
 import cv2 as cv
 import numpy as np
-#include <opencv2/highgui.hpp>
+from modules import grid_detection_param as param
 
 Winname = "Frame"
-default_lower = [25, 90, 90]
-default_upper = [40, 200, 200]
+default_lower = [15, 85, 120]
+default_upper = [40, 145, 145]
 
 def nothing(x):
     pass
@@ -38,14 +37,26 @@ cv.setTrackbarPos('H (upper)',Winname,default_upper[0])
 cv.setTrackbarPos('S (upper)',Winname,default_upper[1])
 cv.setTrackbarPos('V (upper)',Winname,default_upper[2])
 
-#cap = cv.VideoCapture(0)
-picam2 = Picamera2()
-picam2.configure(picam2.create_still_configuration())
-picam2.start()
+webcam = None
+picam = None
+
+if param.DEFAULT_CAMERA == param.PI_CAMERA:
+    from picamera2 import Picamera2
+    picam = Picamera2()
+    picam.configure(picam.create_video_configuration())
+    picam.start()
+else:
+    webcam = cv.VideoCapture(param.DEFAULT_CAMERA)
 
 while True:
-    #_, frame = cap.read()
-    frame = picam2.capture_array()
+    if picam is not None:
+        frame = picam.capture_array()
+    elif webcam is not None:
+        _, frame = webcam.read()
+    else:
+        print("Error: No Webcam or Picamera detected.")
+        exit(1)
+
     H = cv.getTrackbarPos('H (lower)', 'Frame')
     S = cv.getTrackbarPos('S (lower)', 'Frame')
     V = cv.getTrackbarPos('V (lower)', 'Frame')
@@ -76,8 +87,7 @@ while True:
         cv.setTrackbarPos('Print',Winname,0)
 
     if cv.waitKey(1) == ord('q'):
-        picam2.stop()
+        picam.stop() if picam is not None else webcam.release()
         break
 
-cap.release()
 cv.destroyAllWindows()

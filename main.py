@@ -2,8 +2,8 @@
 import json
 import os
 
-import serial
-import time
+# import serial
+# import time
 
 import multiprocessing as mp
 from multiprocessing import Manager

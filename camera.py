@@ -1,9 +1,27 @@
-from picamera2 import Picamera2
 import cv2
 import numpy as np
+import sys
+import yaml
 
 from camera_grid import Grid
 from modules import grid_detection_param as param
+
+# Load configuration from YAML file
+try:
+    with open(sys.argv[1], "r") as f:
+        config = yaml.safe_load(f)
+except IndexError:
+    print("Error: No configuration file path provided.\nUsage: python3 [main/camera].py <config_file_path>")
+    exit(1)
+except FileNotFoundError:
+    print(f"Error: Configuration file '{sys.argv[1]}' not found.")
+    exit(1)
+except yaml.YAMLError as e:
+    print(f"Error: Failed to parse YAML configuration file: {e}")
+    exit(1)
+except Exception as e:
+    print(f"Unexpected error: {e}")
+    exit(1)
 
 class Camera:
     @staticmethod
@@ -24,8 +42,8 @@ class Camera:
     @staticmethod
     def analyse_image(image, grid):
         # Flip image if using webcam
-        #if param.DEFAULT_CAMERA == param.BUILT_IN_WEBCAM:
-        #    image = cv2.flip(image, 1)
+        if config["CAMERA"] == param.BUILT_IN_WEBCAM:
+           image = cv2.flip(image, 1)
 
         # White Balance
         #image = Camera.white_balance(image)
@@ -53,11 +71,11 @@ class Camera:
         #hsv_frame_corrected = cv2.cvtColor(image_corrected, cv2.COLOR_BGR2HSV)
 
         # Masks
-        yellow_mask = cv2.inRange(hsv_frame, param.YELLOW_L, param.YELLOW_U)
-        red_mask = cv2.inRange(hsv_frame, param.RED_L, param.RED_U) | cv2.inRange(hsv_frame, param.RED_HR_L, param.RED_HR_U)
+        yellow_mask = cv2.inRange(hsv_frame, np.array(config["YELLOW_L"], np.uint8), np.array(config["YELLOW_U"], np.uint8))
+        red_mask = cv2.inRange(hsv_frame, np.array(config["RED_L"], np.uint8), np.array(config["RED_U"], np.uint8)) | cv2.inRange(hsv_frame, np.array(config["RED_HR_L"], np.uint8), np.array(config["RED_HR_U"], np.uint8))
 
         # Subtract the noise from the red mask
-        #red_noise_mask = cv2.inRange(hsv_frame, param.RED_NOISE_L, param.RED_NOISE_U)
+        #red_noise_mask = cv2.inRange(hsv_frame, np.array(config["RED_NOISE_L"], np.uint8), np.array(config["RED_NOISE_U"], np.uint8))
         # red_mask = cv2.subtract(red_mask, noise_mask)
 
         # Dilate masks to fill small holes
@@ -84,19 +102,32 @@ class Camera:
 
     @staticmethod
     def start_image_processing(g, shared_dict):
-        picam2 = Picamera2()
-        picam2.configure(picam2.create_video_configuration())
-        picam2.start()
-
+        webcam = None
+        picam = None
+        
+        if config["CAMERA"] == param.PI_CAMERA:
+            from picamera2 import Picamera2
+            picam = Picamera2()
+            picam.configure(picam.create_video_configuration())
+            picam.start()
+        else:
+            webcam = cv2.VideoCapture(config["CAMERA"])
+        
         while True:
-            image = picam2.capture_array()
+            if picam is not None:
+                image = picam.capture_array()
+            elif webcam is not None:
+                _, image = webcam.read()
+            else:
+                print("Error: No Webcam or Picamera detected.")
+                exit(1)
 
             if image is None:
                 print("Error: Image not found or path is incorrect.")
                 exit(1)
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
-                picam2.stop()
+                picam.stop() if picam is not None else webcam.release()
                 cv2.destroyAllWindows()
                 break
 
@@ -111,6 +142,8 @@ class Camera:
                 shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()
                 shared_dict['grid_ready'] = True
 
+
 if __name__ == "__main__":
-    g = Grid(5, 0.3)
+    g = Grid(30, 0.3)
     Camera.start_image_processing(g, {})
+
