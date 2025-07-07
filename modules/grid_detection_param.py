@@ -5,6 +5,10 @@ BUILT_IN_WEBCAM = 0
 EXTERNAL_WEBCAM = 1
 PI_CAMERA = 2
 
+# Color detection mode
+FIX_RANGE = 0
+DYNAMIC_RANGE = 1
+
 # Board Dimension
 BOARD_WIDTH = 189
 BOARD_HEIGHT = 139

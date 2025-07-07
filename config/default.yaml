@@ -1,7 +1,17 @@
 # Camera selection
 CAMERA: 0  # 0: BUILT_IN_WEBCAM, 1: EXTERNAL_WEBCAM, 2: PI_CAMERA
 
-# Color Ranges
+# Color detection mode
+COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
+REF_IMAGE: "opencv test/try_irl.jpg"
+
+# Options
+WHITE_BALANCE: False
+RED_NOISE_REDUCTION: False
+GLOBAL_NORMALIZATION: False
+BLURR: True
+
+# Default Color Ranges
 RED_L: [135, 135, 85]
 RED_U: [195, 235, 135]
 

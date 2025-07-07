@@ -3,6 +3,9 @@ import numpy as np
 import sys
 import yaml
 
+from skimage import data, exposure
+from skimage.exposure import match_histograms
+
 from camera_grid import Grid
 from modules import grid_detection_param as param
 
@@ -25,69 +28,94 @@ except Exception as e:
 
 class Camera:
     @staticmethod
-    def white_balance(img):
-        result = img.copy().astype(np.float32)
+    def gray_world(image):
+        avg_bgr = np.mean(image, axis=(0, 1))
+        scale = np.mean(avg_bgr) / avg_bgr
+        balanced = np.clip(image * scale, 0, 255).astype(np.uint8)
 
-        avg_b = np.mean(result[:, :, 0])
-        avg_g = np.mean(result[:, :, 1])
-        avg_r = np.mean(result[:, :, 2])
-        avg = (avg_b + avg_g + avg_r) / 3
-
-        result[:, :, 0] *= avg / avg_b
-        result[:, :, 1] *= avg / avg_g
-        result[:, :, 2] *= avg / avg_r
-
-        return np.clip(result, 0, 255).astype(np.uint8)
+        return cv2.cvtColor(balanced, cv2.COLOR_BGR2HSV)
 
     @staticmethod
+    def global_normalization(image, ref_image):
+        # Matching histogram
+        return match_histograms(image, ref_image, channel_axis=-1)
+    
+    @staticmethod
+    def dynamic_white_balance(image, start_point, end_point, show_area=None):
+        if show_area is not None:
+            cv2.rectangle(show_area, start_point, end_point (0, 0, 0), 1)
+
+        white_patch = image[start_point[1]:end_point[1], start_point[0]:end_point[0]]
+    
+        avg_color = white_patch.mean(axis=(0, 1))  # BGR if using OpenCV
+        scale = 200.0 / avg_color
+    
+        return (image * scale).clip(0, 200).astype(np.uint8)
+    
+    @staticmethod
+    def dynamic_range(image, start_point, end_point, show_area=None, color=None, h_margin=10, s_margin=50, v_margin=50):
+        if show_area is not None and color is not None:
+            cv2.rectangle(show_area, start_point, end_point, color, 1)
+
+        patch = image[start_point[1]:end_point[1], start_point[0]:end_point[0]]
+        mean = cv2.mean(patch)[:3]
+
+        h, s, v = mean
+        lower = np.array([max(h - h_margin, 0), max(s - s_margin, 0), max(v - v_margin, 0)], dtype=np.uint8)
+        upper = np.array([min(h + h_margin, 179), min(s + s_margin, 255), min(v + v_margin, 255)], dtype=np.uint8)
+       
+        return lower, upper
+
+       
+    @staticmethod
     def analyse_image(image, grid):
+
         # Flip image if using webcam
         if config["CAMERA"] == param.BUILT_IN_WEBCAM:
            image = cv2.flip(image, 1)
 
-        # White Balance
-        #image = Camera.white_balance(image)
+        # Copy image
+        grid_calc = image.copy()
 
-        # Convert to LAB color space (L = lightness, A & B = color channels)
-        #lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+        # Convert to HSV
+        corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # Split into channels
-        #l, a, b = cv2.split(lab)
+        if config["WHITE_BALANCE"]:
+            corrected_img = Camera.dynamic_white_balance(image, (150, 240), (180, 270), grid_calc)
 
-        # Apply CLAHE to the lightness channel only
-        #clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        #cl = clahe.apply(l)
+        if config["GLOBAL_NORMALIZATION"]:
+            corrected_img = Camera.global_normalization(corrected_img, Camera.ref_img)
+            
+        if config["COLOR_MODE"] == param.FIX_RANGE:
+            red_l = np.array(config["RED_L"], np.uint8)
+            red_u = np.array(config["RED_U"], np.uint8)
+            yellow_l = np.array(config["YELLOW_L"], np.uint8)
+            yellow_u = np.array(config["YELLOW_U"], np.uint8)
 
-        # Merge back the processed L with original A and B
-        #lab_clahe = cv2.merge((cl, a, b))
+        elif config["COLOR_MODE"] == param.DYNAMIC_RANGE:
+            red_l, red_u = Camera.dynamic_range(corrected_img, (150, 120), (180, 150), grid_calc, (0, 0, 255))
+            yellow_l, yellow_u = Camera.dynamic_range(corrected_img, (150, 180), (180, 210), grid_calc, (0, 255, 255))
 
+        if config["BLURR"]:
+            corrected_img = cv2.GaussianBlur(corrected_img, (5, 5), 0)
 
-        # Convert back to BGR
-        #image_corrected = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
-        bgr_frame = image[:, :, :3]  # Drop the 4th channel (X)
-        #bgr_frame = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
-        hsv_frame = cv2.cvtColor(bgr_frame, cv2.COLOR_BGR2HSV)
-        #hsv_frame = cv2.cvtColor(image, cv2.COLOR_BayerBG2BGR)
-        #hsv_frame_corrected = cv2.cvtColor(image_corrected, cv2.COLOR_BGR2HSV)
-
-        # Masks
-        yellow_mask = cv2.inRange(hsv_frame, np.array(config["YELLOW_L"], np.uint8), np.array(config["YELLOW_U"], np.uint8))
-        red_mask = cv2.inRange(hsv_frame, np.array(config["RED_L"], np.uint8), np.array(config["RED_U"], np.uint8)) | cv2.inRange(hsv_frame, np.array(config["RED_HR_L"], np.uint8), np.array(config["RED_HR_U"], np.uint8))
-
-        # Subtract the noise from the red mask
-        #red_noise_mask = cv2.inRange(hsv_frame, np.array(config["RED_NOISE_L"], np.uint8), np.array(config["RED_NOISE_U"], np.uint8))
-        # red_mask = cv2.subtract(red_mask, noise_mask)
+        # Create masks
+        red_mask = cv2.inRange(corrected_img, red_l, red_u)
+        yellow_mask = cv2.inRange(corrected_img, yellow_l, yellow_u)
 
         # Dilate masks to fill small holes
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
         red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_CLOSE, kernel)
         yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_CLOSE, kernel)
 
         red_mask = cv2.dilate(red_mask, kernel)
         yellow_mask = cv2.dilate(yellow_mask, kernel)
 
+        if config["RED_NOISE_REDUCTION"]:
+            # Remove small noise (erode-dilate)
+            red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+
         # Print the grid mask
-        grid_calc = image.copy()
         grid.draw_grid_mask(grid_calc, True)
 
         # Detect and map red (1) and yellow (2) circles
@@ -96,14 +124,27 @@ class Camera:
 
         #cv2.imshow("Original", image)
         #cv2.resizeWindow("ConnecTUM", 50, 50)
-        cv2.imshow('ConnecTUM', grid_calc)
-        cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
-        cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+        # cv2.imshow('ConnecTUM', grid_calc)
+        # cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
+        # cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
+
+        # Resize to same shape
+        shape = (360, 360)
+        imgs = [cv2.resize(i, shape) for i in [image, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask)]]
+
+        # Combine into 2x2 grid
+        top_row = np.hstack((imgs[0], imgs[1]))
+        bottom_row = np.hstack((imgs[2], imgs[3]))
+        composite = np.vstack((top_row, bottom_row))
+
+        # Show single window
+        cv2.imshow("Combined View", composite)
 
     @staticmethod
     def start_image_processing(g, shared_dict):
         webcam = None
         picam = None
+        ref_img = None
         
         if config["CAMERA"] == param.PI_CAMERA:
             from picamera2 import Picamera2
@@ -112,6 +153,13 @@ class Camera:
             picam.start()
         else:
             webcam = cv2.VideoCapture(config["CAMERA"])
+
+        if config["COLOR_MODE"] == param.DYNAMIC_RANGE:
+            ref_img = cv2.imread(config["REF_IMAGE"])
+        
+            if ref_img is None:
+                print('Could not open or find the reference image')
+                exit(1)
         
         while True:
             if picam is not None:
