@@ -9,7 +9,7 @@ REF_IMAGE: "opencv test/try_irl.jpg"
 WHITE_BALANCE: False
 RED_NOISE_REDUCTION: False
 GLOBAL_NORMALIZATION: False
-BLURR: True
+BLURR: False
 
 # Default Color Ranges
 RED_L: [135, 135, 85]

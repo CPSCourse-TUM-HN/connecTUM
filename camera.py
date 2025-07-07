@@ -43,7 +43,7 @@ class Camera:
     @staticmethod
     def dynamic_white_balance(image, start_point, end_point, show_area=None):
         if show_area is not None:
-            cv2.rectangle(show_area, start_point, end_point (0, 0, 0), 1)
+            cv2.rectangle(show_area, start_point, end_point, (0, 0, 0), 1)
 
         white_patch = image[start_point[1]:end_point[1], start_point[0]:end_point[0]]
     
