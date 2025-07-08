@@ -218,7 +218,7 @@ if __name__ == "__main__":
     g = Grid(30, 0.3)
     cam = Camera()
 
-    if cam.config.GUI_FLAVOUR != "NO_GUI":
+    if cam.gui:
         cam.gui.start(cam.config.camera_options)
 
     cam.start_image_processing(g, {})
