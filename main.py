@@ -95,8 +95,8 @@ def play_game(shared_dict):
     with open(lookup_table_loc, 'w') as file:
         json.dump(lookup_table, file, indent=4)
 
-def camera_processing(grid, shared_dict):
-    Camera.start_image_processing(grid, shared_dict)
+def camera_processing(cam, grid, shared_dict):
+    cam.start_image_processing(grid, shared_dict)
 
 def send_integer(number):
     try:
@@ -115,7 +115,8 @@ if __name__ == "__main__":
     shared_dict['grid_ready'] = False
 
     grid = Grid(30, 0.3)
-    camera_process = mp.Process(target=camera_processing, args=(grid, shared_dict))
+    camera = Camera()
+    camera_process = mp.Process(target=camera_processing, args=(camera, grid, shared_dict))
 
     camera_process.start()
     play_game(shared_dict)

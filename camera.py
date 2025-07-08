@@ -10,7 +10,7 @@ from camera_grid import Grid
 from modules import grid_detection_param as param
 from modules.utils import dotdict
 
-import gui
+#import gui
 
 class Camera:
     def __init__(self):
@@ -142,11 +142,11 @@ class Camera:
         bottom_row = np.hstack((imgs[2], imgs[3]))
         composite = np.vstack((top_row, bottom_row))
 
-        # cv2.imshow("Combined View", composite)
-        # grid.show(cell_size=40)
+        cv2.imshow("Combined View", composite)
+        grid.show(cell_size=40)
 
         # DearPyGUI
-        gui.render(imgs, grid.computed_grid)
+        #gui.render(imgs, grid.computed_grid)
 
     def start_image_processing(self, g, shared_dict):
         webcam = None
