@@ -17,7 +17,7 @@ class Camera:
         # Load configuration from YAML file
         try:
             #! Change to sys.argv[1]
-            with open("config/default.yaml", "r") as f:
+            with open(sys.argv[1], "r") as f:
                 self.config = dotdict(yaml.safe_load(f))
         except IndexError:
             print("Error: No configuration file path provided.\nUsage: python3 [main/camera].py <config_file_path>")
