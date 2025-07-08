@@ -6,7 +6,7 @@ COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
 REF_IMAGE: "opencv test/try_irl.jpg"
 
 # GUI Flavour
-GUI_FLAVOUR: "PYQT" # NO_GUI, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
+GUI_FLAVOUR: "TKINTER" # NO_GUI, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
 
 # Options
 camera_options:

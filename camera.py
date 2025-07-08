@@ -175,8 +175,9 @@ class Camera:
         bottom_row = np.hstack((imgs[2], imgs[3]))
         composite = np.vstack((top_row, bottom_row))
 
-        cv2.imshow("Combined View", composite)
-        grid.show(cell_size=40)
+        if self.config.GUI_FLAVOUR == "BASIC":
+            cv2.imshow("Combined View", composite)
+            grid.show(cell_size=40)
 
         if self.gui:
             self.gui.render(imgs, grid.computed_grid)
