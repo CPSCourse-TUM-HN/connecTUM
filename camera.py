@@ -10,8 +10,6 @@ from camera_grid import Grid
 from modules import grid_detection_param as param
 from modules.utils import dotdict
 
-import gui
-
 class Camera:
     def __init__(self):
         # Load configuration from YAML file
@@ -31,6 +29,40 @@ class Camera:
         except Exception as e:
             print(f"Unexpected error: {e}")
             exit(1)
+
+        self.webcam = None
+        self.picam = None
+        self.ref_img = None
+        
+        # Camera configuration
+        if self.config.CAMERA == param.PI_CAMERA:
+            from picamera2 import Picamera2
+            picam = Picamera2()
+            picam.configure(picam.create_video_configuration())
+            picam.start()
+        else:
+            self.webcam = cv2.VideoCapture(self.config.CAMERA)
+
+        # Load reference image
+        if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
+            self.ref_img = cv2.imread(self.config.REF_IMAGE)
+        
+            if self.ref_img is None:
+                print('Could not open or find the reference image')
+                exit(1)
+        
+        # GUI configuration
+        if self.config.GUI_FLAVOUR == "TKINTER":
+            import tkinter_gui as tk_gui
+            self.gui = tk_gui
+        elif self.config.GUI_FLAVOUR == "DPG":
+            import dpg_gui as dpg_gui
+            self.gui = dpg_gui
+        elif self.config.GUI_FLAVOUR == "PYQT":
+            import pyqt_gui as pyqt_gui
+            self.gui = pyqt_gui
+        else:
+            self.gui = None
 
     @staticmethod
     def gray_world(image):
@@ -77,7 +109,8 @@ class Camera:
            image = cv2.flip(image, 1)
 
         # Retrieve option info
-        self.config.camera_options = gui.get_checkbox_values(self.config.camera_options)
+        if self.gui:
+            self.config.camera_options = self.gui.get_checkbox_values(self.config.camera_options)
 
         # Copy image
         grid_calc = image.copy()
@@ -94,7 +127,7 @@ class Camera:
             corrected_img = Camera.gray_world(image)
 
         if self.config.camera_options.GLOBAL_NORMALIZATION:
-            corrected_img = Camera.global_normalization(corrected_img, Camera.ref_img)
+            corrected_img = Camera.global_normalization(corrected_img, self.ref_img)
             
         if self.config.COLOR_MODE == param.FIX_RANGE:
             red_l = np.array (self.config.RED_L, np.uint8)
@@ -142,37 +175,18 @@ class Camera:
         bottom_row = np.hstack((imgs[2], imgs[3]))
         composite = np.vstack((top_row, bottom_row))
 
-        # cv2.imshow("Combined View", composite)
-        # grid.show(cell_size=40)
+        cv2.imshow("Combined View", composite)
+        grid.show(cell_size=40)
 
-        # DearPyGUI
-        gui.render(imgs, grid.computed_grid)
+        if self.gui:
+            self.gui.render(imgs, grid.computed_grid)
 
     def start_image_processing(self, g, shared_dict):
-        webcam = None
-        picam = None
-        ref_img = None
-        
-        if self.config.CAMERA == param.PI_CAMERA:
-            from picamera2 import Picamera2
-            picam = Picamera2()
-            picam.configure(picam.create_video_configuration())
-            picam.start()
-        else:
-            webcam = cv2.VideoCapture (self.config.CAMERA)
-
-        if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
-            Camera.ref_img = cv2.imread (self.config.REF_IMAGE)
-        
-            if Camera.ref_img is None:
-                print('Could not open or find the reference image')
-                exit(1)
-        
         while True:
-            if picam is not None:
-                image = picam.capture_array()
-            elif webcam is not None:
-                _, image = webcam.read()
+            if self.picam is not None:
+                image = self.picam.capture_array()
+            elif self.webcam is not None:
+                _, image = self.webcam.read()
             else:
                 print("Error: No Webcam or Picamera detected.")
                 exit(1)
@@ -182,9 +196,10 @@ class Camera:
                 exit(1)
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
-                picam.stop() if picam is not None else webcam.release()
+                self.picam.stop() if self.picam is not None else self.webcam.release()
                 cv2.destroyAllWindows()
-                gui.destroy()
+                if self.gui:
+                    self.gui.destroy()
                 break
 
             h, w, _ = image.shape
@@ -203,5 +218,7 @@ if __name__ == "__main__":
     g = Grid(30, 0.3)
     cam = Camera()
 
-    gui.start(cam.config.camera_options)
+    if cam.config.GUI_FLAVOUR != "NO_GUI":
+        cam.gui.start(cam.config.camera_options)
+
     cam.start_image_processing(g, {})

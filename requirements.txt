@@ -8,4 +8,5 @@ pybind11==2.13.6
 setuptools==80.8.0
 picamera2==0.3.27
 pyyaml==6.0.2
+scikit-image==0.25.2
 dearpygui==2.1.0
