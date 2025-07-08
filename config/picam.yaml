@@ -5,6 +5,9 @@ CAMERA: 2  # 0: BUILT_IN_WEBCAM, 1: EXTERNAL_WEBCAM, 2: PI_CAMERA
 COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
 REF_IMAGE: "opencv test/try_irl.jpg"
 
+# GUI Flavour
+GUI_FLAVOUR: "PYQT" # NO_GUI, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
+
 # Options
 camera_options:
   WHITE_BALANCE: False

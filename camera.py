@@ -37,9 +37,9 @@ class Camera:
         # Camera configuration
         if self.config.CAMERA == param.PI_CAMERA:
             from picamera2 import Picamera2
-            picam = Picamera2()
-            picam.configure(picam.create_video_configuration())
-            picam.start()
+            self.picam = Picamera2()
+            self.picam.configure(self.picam.create_video_configuration())
+            self.picam.start()
         else:
             self.webcam = cv2.VideoCapture(self.config.CAMERA)
 
