@@ -6,10 +6,12 @@ COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
 REF_IMAGE: "opencv test/try_irl.jpg"
 
 # Options
-WHITE_BALANCE: False
-RED_NOISE_REDUCTION: False
-GLOBAL_NORMALIZATION: False
-BLURR: False
+camera_options:
+  WHITE_BALANCE: False
+  GRAY_WORLD: False
+  RED_NOISE_REDUCTION: False
+  GLOBAL_NORMALIZATION: False
+  BLURR: True
 
 # Default Color Ranges
 RED_L: [135, 135, 85]

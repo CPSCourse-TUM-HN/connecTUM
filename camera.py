@@ -8,25 +8,30 @@ from skimage.exposure import match_histograms
 
 from camera_grid import Grid
 from modules import grid_detection_param as param
+from modules.utils import dotdict
 
-# Load configuration from YAML file
-try:
-    with open(sys.argv[1], "r") as f:
-        config = yaml.safe_load(f)
-except IndexError:
-    print("Error: No configuration file path provided.\nUsage: python3 [main/camera].py <config_file_path>")
-    exit(1)
-except FileNotFoundError:
-    print(f"Error: Configuration file '{sys.argv[1]}' not found.")
-    exit(1)
-except yaml.YAMLError as e:
-    print(f"Error: Failed to parse YAML configuration file: {e}")
-    exit(1)
-except Exception as e:
-    print(f"Unexpected error: {e}")
-    exit(1)
+import gui
 
 class Camera:
+    def __init__(self):
+        # Load configuration from YAML file
+        try:
+            #! Change to sys.argv[1]
+            with open("config/default.yaml", "r") as f:
+                self.config = dotdict(yaml.safe_load(f))
+        except IndexError:
+            print("Error: No configuration file path provided.\nUsage: python3 [main/camera].py <config_file_path>")
+            exit(1)
+        except FileNotFoundError:
+            print(f"Error: Configuration file '{sys.argv[1]}' not found.")
+            exit(1)
+        except yaml.YAMLError as e:
+            print(f"Error: Failed to parse YAML configuration file: {e}")
+            exit(1)
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            exit(1)
+
     @staticmethod
     def gray_world(image):
         avg_bgr = np.mean(image, axis=(0, 1))
@@ -66,13 +71,13 @@ class Camera:
        
         return lower, upper
 
-       
-    @staticmethod
-    def analyse_image(image, grid):
-
+    def analyse_image(self, image, grid):
         # Flip image if using webcam
-        if config["CAMERA"] == param.BUILT_IN_WEBCAM:
+        if self.config.CAMERA == param.BUILT_IN_WEBCAM:
            image = cv2.flip(image, 1)
+
+        # Retrieve option info
+        self.config.camera_options = gui.get_checkbox_values(self.config.camera_options)
 
         # Copy image
         grid_calc = image.copy()
@@ -80,23 +85,30 @@ class Camera:
         # Convert to HSV
         corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        if config["WHITE_BALANCE"]:
-            corrected_img = Camera.dynamic_white_balance(image, (150, 240), (180, 270), grid_calc)
+        if self.config.camera_options.WHITE_BALANCE:
+            radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
+            padding = round(param.PADDING_TOP*grid.scale_ratio)
+            corrected_img = Camera.dynamic_white_balance(image, (grid.min_circle[0] - radius, grid.min_circle[1] + radius*3 + padding*2), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*5 + padding*2), grid_calc)
 
-        if config["GLOBAL_NORMALIZATION"]:
+        if self.config.camera_options.GRAY_WORLD:
+            corrected_img = Camera.gray_world(image)
+
+        if self.config.camera_options.GLOBAL_NORMALIZATION:
             corrected_img = Camera.global_normalization(corrected_img, Camera.ref_img)
             
-        if config["COLOR_MODE"] == param.FIX_RANGE:
-            red_l = np.array(config["RED_L"], np.uint8)
-            red_u = np.array(config["RED_U"], np.uint8)
-            yellow_l = np.array(config["YELLOW_L"], np.uint8)
-            yellow_u = np.array(config["YELLOW_U"], np.uint8)
+        if self.config.COLOR_MODE == param.FIX_RANGE:
+            red_l = np.array (self.config.RED_L, np.uint8)
+            red_u = np.array (self.config.RED_U, np.uint8)
+            yellow_l = np.array (self.config.YELLOW_L, np.uint8)
+            yellow_u = np.array (self.config.YELLOW_U, np.uint8)
 
-        elif config["COLOR_MODE"] == param.DYNAMIC_RANGE:
-            red_l, red_u = Camera.dynamic_range(corrected_img, (150, 120), (180, 150), grid_calc, (0, 0, 255))
-            yellow_l, yellow_u = Camera.dynamic_range(corrected_img, (150, 180), (180, 210), grid_calc, (0, 255, 255))
+        elif self.config.COLOR_MODE == param.DYNAMIC_RANGE:
+            radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
+            padding = round(param.PADDING_TOP*grid.scale_ratio)
+            red_l, red_u = Camera.dynamic_range(corrected_img, (grid.min_circle[0] - radius, grid.min_circle[1] - radius), (grid.min_circle[0] + radius, grid.min_circle[1] + radius), grid_calc, (0, 0, 255))
+            yellow_l, yellow_u = Camera.dynamic_range(corrected_img, (grid.min_circle[0] - radius, grid.min_circle[1] + radius + padding), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*3 + padding), grid_calc, (0, 255, 255))
 
-        if config["BLURR"]:
+        if self.config.camera_options.BLURR:
             corrected_img = cv2.GaussianBlur(corrected_img, (5, 5), 0)
 
         # Create masks
@@ -111,7 +123,7 @@ class Camera:
         red_mask = cv2.dilate(red_mask, kernel)
         yellow_mask = cv2.dilate(yellow_mask, kernel)
 
-        if config["RED_NOISE_REDUCTION"]:
+        if self.config.camera_options.RED_NOISE_REDUCTION:
             # Remove small noise (erode-dilate)
             red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
@@ -120,16 +132,9 @@ class Camera:
 
         # Detect and map red (1) and yellow (2) circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
-        grid.show(cell_size=40)
-
-        #cv2.imshow("Original", image)
-        #cv2.resizeWindow("ConnecTUM", 50, 50)
-        # cv2.imshow('ConnecTUM', grid_calc)
-        # cv2.imshow('Red Mask', cv2.bitwise_and(image, image, mask=red_mask))
-        # cv2.imshow('Yellow Mask', cv2.bitwise_and(image, image, mask=yellow_mask))
 
         # Resize to same shape
-        shape = (360, 360)
+        shape = (320, 240)
         imgs = [cv2.resize(i, shape) for i in [image, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask)]]
 
         # Combine into 2x2 grid
@@ -137,27 +142,29 @@ class Camera:
         bottom_row = np.hstack((imgs[2], imgs[3]))
         composite = np.vstack((top_row, bottom_row))
 
-        # Show single window
-        cv2.imshow("Combined View", composite)
+        # cv2.imshow("Combined View", composite)
+        # grid.show(cell_size=40)
 
-    @staticmethod
-    def start_image_processing(g, shared_dict):
+        # DearPyGUI
+        gui.render(imgs, grid.computed_grid)
+
+    def start_image_processing(self, g, shared_dict):
         webcam = None
         picam = None
         ref_img = None
         
-        if config["CAMERA"] == param.PI_CAMERA:
+        if self.config.CAMERA == param.PI_CAMERA:
             from picamera2 import Picamera2
             picam = Picamera2()
             picam.configure(picam.create_video_configuration())
             picam.start()
         else:
-            webcam = cv2.VideoCapture(config["CAMERA"])
+            webcam = cv2.VideoCapture (self.config.CAMERA)
 
-        if config["COLOR_MODE"] == param.DYNAMIC_RANGE:
-            ref_img = cv2.imread(config["REF_IMAGE"])
+        if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
+            Camera.ref_img = cv2.imread (self.config.REF_IMAGE)
         
-            if ref_img is None:
+            if Camera.ref_img is None:
                 print('Could not open or find the reference image')
                 exit(1)
         
@@ -177,6 +184,7 @@ class Camera:
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 picam.stop() if picam is not None else webcam.release()
                 cv2.destroyAllWindows()
+                gui.destroy()
                 break
 
             h, w, _ = image.shape
@@ -184,7 +192,7 @@ class Camera:
             if h != g.h or w != g.w:
                 g.resize(h, w)
 
-            Camera.analyse_image(image, g)
+            self.analyse_image(image, g)
 
             if g.computed_grid is not None:
                 shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()
@@ -193,5 +201,7 @@ class Camera:
 
 if __name__ == "__main__":
     g = Grid(30, 0.3)
-    Camera.start_image_processing(g, {})
+    cam = Camera()
 
+    gui.start(cam.config.camera_options)
+    cam.start_image_processing(g, {})
