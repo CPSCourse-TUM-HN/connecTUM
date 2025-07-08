@@ -77,7 +77,7 @@ class Camera:
            image = cv2.flip(image, 1)
 
         # Retrieve option info
-        self.config.camera_options = gui.get_checkbox_values(self.config.camera_options)
+        #self.config.camera_options = gui.get_checkbox_values(self.config.camera_options)
 
         # Copy image
         grid_calc = image.copy()
@@ -184,7 +184,7 @@ class Camera:
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 picam.stop() if picam is not None else webcam.release()
                 cv2.destroyAllWindows()
-                gui.destroy()
+                #gui.destroy()
                 break
 
             h, w, _ = image.shape
@@ -203,5 +203,5 @@ if __name__ == "__main__":
     g = Grid(30, 0.3)
     cam = Camera()
 
-    gui.start(cam.config.camera_options)
+    #gui.start(cam.config.camera_options)
     cam.start_image_processing(g, {})
