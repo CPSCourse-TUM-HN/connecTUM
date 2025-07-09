@@ -19,6 +19,8 @@ baud_rate = 9600
 timeout_sec = 2
 no_motors = False
 
+camera_process = None
+
 def play_game(shared_dict, bot_first, play_in_terminal):
     lookup_table_loc = 'lookup_table.json'
 
@@ -46,6 +48,10 @@ def play_game(shared_dict, bot_first, play_in_terminal):
     # Wait for camera to start producing data
     print("Waiting for camera to initialize...")
     while not play_in_terminal and ('grid_ready' not in shared_dict or not shared_dict['grid_ready']):
+        if shared_dict["camera_error"]:
+            print("Error during camera initialization. Exit program.")
+            exit(1)
+
         pass
 
     print("Camera ready, game starting!")
@@ -72,6 +78,23 @@ def play_game(shared_dict, bot_first, play_in_terminal):
                 # Wait for new grid data from camera
                 new_grid = None
                 while not play_in_terminal and new_grid is None:
+                    
+                    if shared_dict["camera_error"]:
+                        camera_process.join()
+                        print("An error has occured with the camera.\nIf the issue has been fixed, you can restart the camera by pressing 'c', if not you can quit this program with 'q'.")
+
+                        i = None
+                        while i not in ["q", "c"]:
+                            i = input("Please enter 'c' or 'q':")
+                            continue
+
+                        if camera is not None and i == "c":
+                            camera_process.start()
+                        elif i == "q":
+                            print("Camera has not been fixed. Exit program.")
+                            exit(1)
+
+
                     if 'current_grid' in shared_dict:
                         new_grid = shared_dict['current_grid'].copy()
 
@@ -116,9 +139,7 @@ def get_input():
     return col
 
 def camera_processing(cam, grid, shared_dict):
-    print("before starting")
     cam.start_image_processing(grid, shared_dict)
-    print("after")
 
 def send_integer(number):
     if no_motors:
@@ -166,6 +187,7 @@ if __name__ == "__main__":
         camera_process.start()
 
         play_game(shared_dict, args.bot_first, False)
+        camera.destroy()
         camera_process.join() 
     else:
         print("Terminal mode")

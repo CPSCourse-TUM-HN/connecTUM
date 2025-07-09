@@ -102,6 +102,12 @@ class Camera:
        
         return lower, upper
 
+    def destroy(self):
+        self.picam.stop() if self.picam is not None else self.webcam.release()
+        cv2.destroyAllWindows()
+        if self.gui:
+            self.gui.destroy()
+
     def analyse_image(self, image, grid):
         # Flip image if using webcam
         if self.config.CAMERA == param.BUILT_IN_WEBCAM:
@@ -188,18 +194,19 @@ class Camera:
             elif self.webcam is not None:
                 _, image = self.webcam.read()
             else:
-                print("Error: No Webcam or Picamera detected.")
+                err = "Error: No Webcam or Picamera detected."
+                shared_dict["camera_error"] = err
+                print(err)
                 exit(1)
 
             if image is None:
-                print("Error: Image not found or path is incorrect.")
+                err = "Error: Image not found or path is incorrect."
+                shared_dict["camera_error"] = err
+                print(err)
                 exit(1)
 
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                self.picam.stop() if self.picam is not None else self.webcam.release()
-                cv2.destroyAllWindows()
-                if self.gui:
-                    self.gui.destroy()
+            if __name__ == "__main__" and cv2.waitKey(10) & 0xFF == ord('q'):
+                self.destroy()
                 break
 
             h, w, _ = image.shape
