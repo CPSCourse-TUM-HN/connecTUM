@@ -98,6 +98,7 @@ class Camera:
         return lower, upper
 
     def destroy(self):
+
         if self.picam is not None:
             self.picam.stop()
         elif self.webcam is not None:
@@ -213,7 +214,7 @@ class Camera:
                 print(err)
                 exit(1)
 
-            if cv2.waitKey(10) & 0xFF == ord('q'):
+            if shared_dict["game_over"] or cv2.waitKey(10) & 0xFF == ord('q'):
                 self.destroy()
                 break
 
