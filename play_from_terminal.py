@@ -65,7 +65,7 @@ if __name__ == "__main__":
             board.pretty_print_board()
             print("Game is a draw!")
             game_over = True
-            winner = param.PLAYER_PIECE
+            winner = param.EMPTY
         turn ^= 1  # Switch turns
 
     board.print_final_score(winner)

@@ -11,17 +11,16 @@ from modules import grid_detection_param as param
 from modules.utils import dotdict
 
 class Camera:
-    def __init__(self):
+    def __init__(self, config_file):
         # Load configuration from YAML file
         try:
-            #! Change to sys.argv[1]
-            with open(sys.argv[1], "r") as f:
+            with open(config_file, "r") as f:
                 self.config = dotdict(yaml.safe_load(f))
         except IndexError:
             print("Error: No configuration file path provided.\nUsage: python3 [main/camera].py <config_file_path>")
             exit(1)
         except FileNotFoundError:
-            print(f"Error: Configuration file '{sys.argv[1]}' not found.")
+            print(f"Error: Configuration file '{config_file}' not found.")
             exit(1)
         except yaml.YAMLError as e:
             print(f"Error: Failed to parse YAML configuration file: {e}")
@@ -217,7 +216,7 @@ class Camera:
 
 if __name__ == "__main__":
     g = Grid(30, 0.3)
-    cam = Camera()
+    cam = Camera(sys.argv[1])
 
     if cam.gui:
         cam.gui.start(cam.config.camera_options)
