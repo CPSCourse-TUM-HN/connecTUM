@@ -98,6 +98,7 @@ class Camera:
         return lower, upper
 
     def destroy(self):
+
         if self.picam is not None:
             self.picam.stop()
         elif self.webcam is not None:
