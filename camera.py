@@ -213,7 +213,7 @@ class Camera:
                 print(err)
                 exit(1)
 
-            if cv2.waitKey(10) & 0xFF == ord('q'):
+            if shared_dict["game_over"] or cv2.waitKey(10) & 0xFF == ord('q'):
                 self.destroy()
                 break
 
