@@ -32,16 +32,7 @@ class Camera:
         self.webcam = None
         self.picam = None
         self.ref_img = None
-        
-        # Camera configuration
-        if self.config.CAMERA == param.PI_CAMERA:
-            from picamera2 import Picamera2
-            self.picam = Picamera2()
-            self.picam.configure(self.picam.create_video_configuration())
-            self.picam.start()
-        else:
-            self.webcam = cv2.VideoCapture(self.config.CAMERA)
-
+        print(self.config)
         # Load reference image
         if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
             self.ref_img = cv2.imread(self.config.REF_IMAGE)
@@ -123,6 +114,7 @@ class Camera:
         # Convert to HSV
         corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
+        print(self.config)
         if self.config.camera_options.WHITE_BALANCE:
             radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
             padding = round(param.PADDING_TOP*grid.scale_ratio)
@@ -188,6 +180,15 @@ class Camera:
             self.gui.render(imgs, grid.computed_grid)
 
     def start_image_processing(self, g, shared_dict):
+        # Camera configuration
+        if self.config.CAMERA == param.PI_CAMERA:
+            from picamera2 import Picamera2
+            self.picam = Picamera2()
+            self.picam.configure(self.picam.create_video_configuration())
+            self.picam.start()
+        else:
+            self.webcam = cv2.VideoCapture(self.config.CAMERA)
+
         while True:
             if self.picam is not None:
                 image = self.picam.capture_array()

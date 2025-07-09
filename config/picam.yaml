@@ -15,7 +15,7 @@ camera_options:
   RED_NOISE_REDUCTION: False
   GLOBAL_NORMALIZATION: False
   BLURR: True
-  
+
 # Color Ranges
 RED_L: [105, 200, 180]
 RED_U: [125, 255, 255]

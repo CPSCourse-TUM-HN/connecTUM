@@ -48,7 +48,8 @@ def play_game(shared_dict, bot_first, play_in_terminal):
     # Wait for camera to start producing data
     print("Waiting for camera to initialize...")
     while not play_in_terminal and ('grid_ready' not in shared_dict or not shared_dict['grid_ready']):
-        if shared_dict["camera_error"]:
+        #print(shared_dict.get("grid_ready", "not there"))
+        if shared_dict["camera_error"] is not None:
             print("Error during camera initialization. Exit program.")
             exit(1)
 
@@ -79,13 +80,14 @@ def play_game(shared_dict, bot_first, play_in_terminal):
                 new_grid = None
                 while not play_in_terminal and new_grid is None:
                     
-                    if shared_dict["camera_error"]:
+                    if shared_dict["camera_error"] is not None:
                         camera_process.join()
                         print("An error has occured with the camera.\nIf the issue has been fixed, you can restart the camera by pressing 'c', if not you can quit this program with 'q'.")
 
                         i = None
                         while i not in ["q", "c"]:
                             i = input("Please enter 'c' or 'q':")
+                            shared_dict["camera_error"] = None
                             continue
 
                         if camera is not None and i == "c":
@@ -138,8 +140,9 @@ def get_input():
 
     return col
 
-def camera_processing(cam, grid, shared_dict):
-    cam.start_image_processing(grid, shared_dict)
+def camera_processing(config_file, grid, shared_dict):
+    camera = Camera(config_file)
+    camera.start_image_processing(grid, shared_dict)
 
 def send_integer(number):
     if no_motors:
@@ -181,9 +184,10 @@ if __name__ == "__main__":
         shared_dict = manager.dict()
         shared_dict['game_over'] = False
         shared_dict['grid_ready'] = False
+        shared_dict["camera_error"] = None
 
         camera = Camera(args.CONFIG_FILE)
-        camera_process = mp.Process(target=camera_processing, args=(camera, grid, shared_dict))
+        camera_process = mp.Process(target=camera_processing, args=(args.CONFIG_FILE, grid, shared_dict))
         camera_process.start()
 
         play_game(shared_dict, args.bot_first, False)
