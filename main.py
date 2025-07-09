@@ -79,7 +79,6 @@ def play_game(shared_dict, bot_first, play_in_terminal):
                 # Wait for new grid data from camera
                 new_grid = None
                 while not play_in_terminal and new_grid is None:
-                    
                     if shared_dict["camera_error"] is not None:
                         camera_process.join()
                         print("An error has occured with the camera.\nIf the issue has been fixed, you can restart the camera by pressing 'c', if not you can quit this program with 'q'.")
@@ -96,14 +95,13 @@ def play_game(shared_dict, bot_first, play_in_terminal):
                             print("Camera has not been fixed. Exit program.")
                             exit(1)
 
-
                     if 'current_grid' in shared_dict:
                         new_grid = shared_dict['current_grid'].copy()
 
                 col = board.get_valid_state(new_grid)
                 if col is not None:
                     valid_move = True
-                    # shared_dict['last_player_move'] = col  # Store the move
+                    shared_dict['last_player_move'] = col  # Store the move
             game_over = board.play_turn(col, param.PLAYER_PIECE)
             if game_over:
                 winner = param.PLAYER_PIECE
@@ -192,7 +190,9 @@ if __name__ == "__main__":
 
         play_game(shared_dict, args.bot_first, False)
         camera.destroy()
-        camera_process.join() 
+        camera_process.join()
+        exit(0)
     else:
         print("Terminal mode")
         play_game({}, args.bot_first, True)
+        exit(0)

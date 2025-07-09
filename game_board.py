@@ -65,10 +65,10 @@ class Board:
 
 		# The new board must have exactly one more token than the old board
 		old_count = np.count_nonzero(self.board_array)
-		new_count = np.count_nonzero(new_board)
+		new_count = np.count_nonzero(new_board.board_array)
+		#print(f"old count:{old_count}, new count:{new_count}")
 		if new_count != old_count + 1:
 			return None
-
 		# Find the difference between the boards
 		diff = new_board.board_array - self.board_array
 		changed_positions = np.argwhere(diff != 0)
@@ -79,7 +79,7 @@ class Board:
 
 		row, col = changed_positions[0]
 		# The change must be on top of the stack (all rows below must be non-empty in new_board)
-		if row > 0 and new_board[row-1][col] == 0:
+		if row > 0 and new_board.board_array[row-1][col] == 0:
 			return None
 
 		return int(col)

@@ -54,6 +54,10 @@ class Camera:
         else:
             self.gui = None
 
+        if self.gui:
+            self.gui.start(self.config.camera_options)
+
+
     @staticmethod
     def gray_world(image):
         avg_bgr = np.mean(image, axis=(0, 1))
@@ -94,7 +98,11 @@ class Camera:
         return lower, upper
 
     def destroy(self):
-        self.picam.stop() if self.picam is not None else self.webcam.release()
+        if self.picam is not None:
+            self.picam.stop()
+        elif self.webcam is not None:
+             self.webcam.release()
+
         cv2.destroyAllWindows()
         if self.gui:
             self.gui.destroy()
@@ -114,7 +122,6 @@ class Camera:
         # Convert to HSV
         corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        print(self.config)
         if self.config.camera_options.WHITE_BALANCE:
             radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
             padding = round(param.PADDING_TOP*grid.scale_ratio)
@@ -206,7 +213,7 @@ class Camera:
                 print(err)
                 exit(1)
 
-            if __name__ == "__main__" and cv2.waitKey(10) & 0xFF == ord('q'):
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 self.destroy()
                 break
 
@@ -225,8 +232,5 @@ class Camera:
 if __name__ == "__main__":
     g = Grid(30, 0.3)
     cam = Camera(sys.argv[1])
-
-    if cam.gui:
-        cam.gui.start(cam.config.camera_options)
 
     cam.start_image_processing(g, {})
