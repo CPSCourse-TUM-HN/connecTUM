@@ -5,6 +5,7 @@ import adafruit_pcf8574
 import adafruit_vl53l0x
 from adafruit_pca9685 import PCA9685
 from tmc_driver.tmc_2209 import *
+import RPi.GPIO as GPIO
 
 # Constants for hardware configuration
 STEPPER_POSITIONS_N = 9
@@ -34,6 +35,13 @@ STEPPER_DEFAULT_SPEED = 200  # Steps per second (will be converted to mm/s in ca
 # Reference: https://www.trinamic.com/fileadmin/assets/Products/ICs/TMC2209_Datasheet_V103.pdf
 # MKS TMC2209 v2.0 specific guide: https://github.com/makerbase-mks/MKS-TMC2209
 # Additional guide: https://github.com/Chr157i4n/TMC2209_Raspberry_Pi
+
+# Setup GPIO pins for stepper control
+# Adjust these pins based on your wiring
+TMC2209_EN_PIN = 21   # Enable pin
+TMC2209_DIR_PIN = 20  # Direction pin
+TMC2209_STEP_PIN = 16 # Step pin
+TMC2209_DIAG_PIN = 26 # Diagnostic pin
 TMC2209_BAUDRATE = 115200  # UART communication speed - standard for MKS TMC2209 v2.0
 TMC2209_DEFAULT_CURRENT = 600  # Motor current in mA (MKS v2.0 supports up to 2.8A peak)
                                # For NEMA17: typical 1.2-1.7A, start with 600-800mA
@@ -149,8 +157,24 @@ class MechanicalSystemController:
         try:
             self.i2c = i2c_bus or busio.I2C(board.SCL, board.SDA)
             
-            # Initialize TMC2209 stepper driver using Chr157i4n library
-            self.stepper = Tmc2209(stepper_uart_port, TMC2209_BAUDRATE, stepper_address)
+            # Initialize GPIO
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setup(TMC2209_EN_PIN, GPIO.OUT)
+            GPIO.setup(TMC2209_DIR_PIN, GPIO.OUT)
+            GPIO.setup(TMC2209_STEP_PIN, GPIO.OUT)
+            
+            # Create TMC control objects
+            tmc_enable_control = TmcEnableControl(enable_pin=TMC2209_EN_PIN)
+            tmc_motion_control = TmcMotionControl(dir_pin=TMC2209_DIR_PIN, step_pin=TMC2209_STEP_PIN)
+            tmc_com = TmcCom(uart_port=stepper_uart_port, baudrate=TMC2209_BAUDRATE)
+            
+            # Initialize TMC2209 stepper driver with proper constructor
+            self.stepper = Tmc2209(
+                tmc_ec=tmc_enable_control,
+                tmc_mc=tmc_motion_control,
+                tmc_com=tmc_com,
+                driver_address=stepper_address
+            )
             
             # Configure TMC2209 settings
             self.stepper.set_direction_reg(False)
