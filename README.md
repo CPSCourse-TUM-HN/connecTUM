@@ -1,6 +1,7 @@
 # ConnecTUM
 First download requirements:
 ```
+pip install ./connect4_alg/
 pip install -r requirements.txt
 ```
 To start backend Python server, run 
