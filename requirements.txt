@@ -2,7 +2,7 @@
 -e ./connect4_alg # If this causes an error, comment out and run pip install ./connect4_alg/
 
 # Third party dependencies
-numpy==2.2.6
+numpy==1.26.4
 opencv-python==4.11.0.86
 pybind11==2.13.6
 setuptools==80.8.0
@@ -11,3 +11,4 @@ pyyaml==6.0.2
 scikit-image==0.25.2
 pyqt5==5.15.11
 argparse==1.4.0
+uvicorn==0.29.0
