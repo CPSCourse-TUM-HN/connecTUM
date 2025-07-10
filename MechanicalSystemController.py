@@ -4,7 +4,7 @@ import busio
 import adafruit_pcf8574
 import adafruit_vl53l0x
 from adafruit_pca9685 import PCA9685
-from tmc_driver.tmc_2209 import TMC_2209, Movement
+from tmc_driver.tmc_2209 import *
 
 # Constants for hardware configuration
 STEPPER_POSITIONS_N = 9
@@ -150,7 +150,7 @@ class MechanicalSystemController:
             self.i2c = i2c_bus or busio.I2C(board.SCL, board.SDA)
             
             # Initialize TMC2209 stepper driver using Chr157i4n library
-            self.stepper = TMC_2209(stepper_uart_port, TMC2209_BAUDRATE, stepper_address)
+            self.stepper = Tmc2209(stepper_uart_port, TMC2209_BAUDRATE, stepper_address)
             
             # Configure TMC2209 settings
             self.stepper.set_direction_reg(False)
@@ -261,7 +261,7 @@ class MechanicalSystemController:
             self.stepper.set_max_speed(TMC2209_HOMING_SPEED)
             
             # Move towards home position
-            self.stepper.set_movement_abs_rel(Movement.relative)
+            self.stepper.set_movement_abs_rel(MovementAbsRel.relative)
             
             # Start moving towards limit
             self.stepper.run_to_position_steps(TMC2209_HOMING_MAX_STEPS)
@@ -344,7 +344,7 @@ class MechanicalSystemController:
             print(f"Moving to column {position}: {target_position_mm}mm = {target_steps} steps")
 
             # Set movement speed
-            self.stepper.set_movement_abs_rel(Movement.absolute)
+            self.stepper.set_movement_abs_rel(MovementAbsRel.absolute)
             self.stepper.set_max_speed(STEPPER_DEFAULT_SPEED)
             
             # Move to absolute position
