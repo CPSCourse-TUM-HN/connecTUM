@@ -13,3 +13,19 @@ pyqt5==5.15.11
 argparse==1.4.0
 uvicorn==0.29.0
 fastapi==0.111.0
+
+# Core CircuitPython libraries for Raspberry Pi
+adafruit-circuitpython-pca9685>=3.4.0
+adafruit-circuitpython-pcf8574>=1.0.0
+adafruit-circuitpython-vl53l0x>=3.6.0
+adafruit-circuitpython-busdevice>=5.2.0
+
+# Core Adafruit Blinka (CircuitPython compatibility layer for Raspberry Pi)
+adafruit-blinka>=8.0.0
+
+# TMC2209 stepper driver library
+PyTmcStepper>=0.7.6
+
+# System dependencies that may be needed
+pyserial>=3.5
+RPi.GPIO>=0.7.1
