@@ -533,10 +533,10 @@ def test_system():
         controller.activate_loader(1)
         controller.activate_loader(2)
         
+        controller.shutdown()
+        
     except Exception as e:
         print(f"Test failed: {e}")
-    finally:
-        controller.shutdown()
 
 if __name__ == "__main__":
     test_system()
