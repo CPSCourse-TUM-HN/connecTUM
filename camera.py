@@ -98,7 +98,6 @@ class Camera:
         return lower, upper
 
     def destroy(self):
-
         if self.picam is not None:
             self.picam.stop()
         elif self.webcam is not None:
@@ -109,9 +108,13 @@ class Camera:
             self.gui.destroy()
 
     def analyse_image(self, image, grid):
+        original_img = image.copy()
+
         # Flip image if using webcam
         if self.config.CAMERA == param.BUILT_IN_WEBCAM:
-           image = cv2.flip(image, 1)
+            image = cv2.flip(image, 1)
+        elif self.config.CAMERA == param.PI_CAMERA:
+            original_img = cv2.cvtColor(original_img, cv2.COLOR_RGB2BGRA)
 
         # Retrieve option info
         if self.gui:
@@ -126,14 +129,15 @@ class Camera:
         if self.config.camera_options.WHITE_BALANCE:
             radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
             padding = round(param.PADDING_TOP*grid.scale_ratio)
-            corrected_img = Camera.dynamic_white_balance(image, (grid.min_circle[0] - radius, grid.min_circle[1] + radius*3 + padding*2), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*5 + padding*2), grid_calc)
+            image = Camera.dynamic_white_balance(image, (grid.min_circle[0] - radius, grid.min_circle[1] + radius*3 + padding*2), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*5 + padding*2), grid_calc)
 
         if self.config.camera_options.GRAY_WORLD:
-            corrected_img = Camera.gray_world(image)
+            image = Camera.gray_world(image)
 
+        corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         if self.config.camera_options.GLOBAL_NORMALIZATION:
             corrected_img = Camera.global_normalization(corrected_img, self.ref_img)
-            
+
         if self.config.COLOR_MODE == param.FIX_RANGE:
             red_l = np.array (self.config.RED_L, np.uint8)
             red_u = np.array (self.config.RED_U, np.uint8)
@@ -166,14 +170,14 @@ class Camera:
             red_mask = cv2.morphologyEx(red_mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
         # Print the grid mask
-        grid.draw_grid_mask(grid_calc, True)
+        grid.draw_grid_mask(grid_calc)
 
         # Detect and map red (1) and yellow (2) circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
 
         # Resize to same shape
         shape = (320, 240)
-        imgs = [cv2.resize(i, shape) for i in [image, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask)]]
+        imgs = [cv2.resize(i, shape) for i in [original_img, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask)]]
 
         # Combine into 2x2 grid
         top_row = np.hstack((imgs[0], imgs[1]))
