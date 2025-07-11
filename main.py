@@ -2,7 +2,7 @@
 import argparse
 import json
 import os
-
+import time
 import multiprocessing as mp
 from multiprocessing import Manager
 
@@ -58,9 +58,8 @@ def play_game(shared_dict, bot_first, play_in_terminal):
     print("Camera ready, game starting!")
 
     # HARDWARE INITIALIZATION
-    send_integer(4)
     send_integer(7)
-    send_integer(100)
+    send_integer(8)
 
     while not game_over:
         board.pretty_print_board()
@@ -109,8 +108,8 @@ def play_game(shared_dict, bot_first, play_in_terminal):
             col = play_alg[mode](board)
             game_over = board.play_turn(col, param.BOT_PIECE)
             send_integer(col)
-            send_integer(200)
-            send_integer(100)
+            send_integer(9)
+            send_integer(8)
             if game_over:
                 winner = param.BOT_PIECE
 
@@ -149,8 +148,8 @@ def send_integer(number):
 
     try:
         with serial.Serial(serial_port, baud_rate, timeout=timeout_sec) as ser:
-            time.sleep(2)
-            ser.write((str(number)).encode('utf-8'))
+            ser.write(bytes([number]))
+            print(f"Sent integer '{number}' to ESP32 on {serial_port}")
     except serial.SerialException as e:
         print(f"Serial error: {e}")
 
