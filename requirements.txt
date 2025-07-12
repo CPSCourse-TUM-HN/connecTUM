@@ -2,7 +2,7 @@
 -e ./connect4_alg # If this causes an error, comment out and run pip install ./connect4_alg/
 
 # Third party dependencies
-numpy==2.2.6
+numpy==1.26.4
 opencv-python==4.11.0.86
 pybind11==2.13.6
 setuptools==80.8.0
@@ -11,3 +11,21 @@ pyyaml==6.0.2
 scikit-image==0.25.2
 pyqt5==5.15.11
 argparse==1.4.0
+uvicorn==0.29.0
+fastapi==0.111.0
+
+# Core CircuitPython libraries for Raspberry Pi
+adafruit-circuitpython-pca9685>=3.4.0
+adafruit-circuitpython-pcf8574>=1.0.0
+adafruit-circuitpython-vl53l0x>=3.6.0
+adafruit-circuitpython-busdevice>=5.2.0
+
+# Core Adafruit Blinka (CircuitPython compatibility layer for Raspberry Pi)
+adafruit-blinka>=8.0.0
+
+# TMC2209 stepper driver library
+PyTmcStepper>=0.7.6
+
+# System dependencies that may be needed
+pyserial>=3.5
+RPi.GPIO>=0.7.1

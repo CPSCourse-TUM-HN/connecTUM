@@ -1,0 +1,203 @@
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional, List
+from game_board import Board
+import modules.board_param as param
+from fastapi.middleware.cors import CORSMiddleware
+import json
+import logging
+from fastapi.responses import JSONResponse
+from connect4_alg import Position, Solver
+
+app = FastAPI()
+
+# Allow CORS for all origins (for development)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global game state (for demo; in production, use sessions or DB)
+game_board = None
+winner = None
+turn = 0  # 0: Player, 1: Bot
+reset_required = False
+last_board_state = None
+selected_difficulty = 'impossible'
+selected_debug = False
+selected_training_mode = False
+lookup_table = dict()
+
+class MoveRequest(BaseModel):
+    column: int
+
+class BoardResponse(BaseModel):
+    board: List[List[int]]
+    winner: Optional[int]
+    turn: int
+    valid_moves: List[int]
+    scores: Optional[List[float]] = None
+
+class StartGameRequest(BaseModel):
+    difficulty: str  # 'easy', 'medium', 'hard', 'impossible'
+    who_starts: str  # 'player' or 'bot'
+    debug: bool = False
+    training_mode: bool = False
+
+class StatusResponse(BaseModel):
+    board: List[List[int]]
+    winner: Optional[int]
+    turn: int
+    valid_moves: List[int]
+    game_over: bool
+    reset_required: bool
+    message: Optional[str]
+
+# Add logging for unhandled exceptions
+def log_exception(request, exc):
+    logging.error(f"Unhandled exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"}
+    )
+
+app.add_exception_handler(Exception, log_exception)
+
+@app.post("/start", response_model=BoardResponse)
+def start_game_with_options(req: StartGameRequest):
+    global game_board, winner, turn, selected_difficulty, reset_required, selected_debug, lookup_table, selected_training_mode
+    game_board = Board()
+    winner = None
+    selected_difficulty = req.difficulty
+    selected_debug = req.debug
+    selected_training_mode = req.training_mode
+    turn = 0 if req.who_starts == 'player' else 1
+    reset_required = False
+    # Load lookup table for impossible mode
+    if selected_difficulty == 'impossible' or selected_training_mode:
+        try:
+            with open('lookup_table.json', 'r') as file:
+                lookup_table = json.load(file)
+        except Exception:
+            lookup_table = dict()
+    return BoardResponse(
+        board=game_board.board_array.tolist(),
+        winner=winner,
+        turn=turn,
+        valid_moves=game_board.get_valid_locations(),
+        scores=None
+    )
+
+@app.post("/move", response_model=BoardResponse)
+def make_move(move: MoveRequest):
+    global game_board, winner, turn, selected_difficulty, selected_debug, lookup_table, selected_training_mode
+    if game_board is None:
+        raise HTTPException(status_code=400, detail="Game not started.")
+    if not hasattr(game_board, 'play_turn'):
+        raise HTTPException(status_code=500, detail="Board object missing play_turn method.")
+    if winner is not None:
+        raise HTTPException(status_code=400, detail="Game is over.")
+    if move.column not in game_board.get_valid_locations():
+        raise HTTPException(status_code=400, detail="Invalid move.")
+    # Player move (either human or algorithm in debug mode)
+    if selected_debug:
+        col = get_bot_move(game_board, selected_difficulty)
+        game_over = game_board.play_turn(col, param.PLAYER_PIECE)
+    else:
+        game_over = game_board.play_turn(move.column, param.PLAYER_PIECE)
+    scores = None
+    if selected_training_mode and not game_over:
+        try:
+            board_arr = game_board.board_array
+            key = "".join(map(str, board_arr.flatten()))
+            flipped_key = "".join(map(str, board_arr[:, ::-1].flatten()))
+            if key in lookup_table:
+                scores = lookup_table[key]
+            elif flipped_key in lookup_table:
+                scores = lookup_table[flipped_key][::-1]
+            else:
+                # Compute scores using Solver if not found in lookup_table
+                position = Position(board_arr)
+                solver = Solver()
+                scores = solver.analyze(position, False)
+        except Exception as e:
+            scores = None
+    if game_over:
+        winner = param.PLAYER_PIECE
+    else:
+        turn ^= 1
+        # Bot move (always algorithm)
+        if not game_over:
+            col = get_bot_move(game_board, selected_difficulty)
+            game_over = game_board.play_turn(col, param.BOT_PIECE)
+            if game_over:
+                winner = param.BOT_PIECE
+            turn ^= 1
+    return BoardResponse(
+        board=game_board.board_array.tolist(),
+        winner=winner,
+        turn=turn,
+        valid_moves=game_board.get_valid_locations(),
+        scores=scores
+    )
+
+@app.get("/state", response_model=BoardResponse)
+def get_state():
+    global game_board, winner, turn
+    if game_board is None:
+        raise HTTPException(status_code=400, detail="Game not started.")
+    return BoardResponse(
+        board=game_board.board_array.tolist(),
+        winner=winner,
+        turn=turn,
+        valid_moves=game_board.get_valid_locations()
+    )
+
+@app.post("/reset", response_model=BoardResponse)
+def reset_game():
+    # Use the same logic as start_game_with_options, but with default values
+    req = StartGameRequest(difficulty='impossible', who_starts='player')
+    return start_game_with_options(req)
+
+@app.get("/status", response_model=StatusResponse)
+def get_status():
+    global game_board, winner, turn, reset_required
+    if game_board is None:
+        raise HTTPException(status_code=400, detail="Game not started.")
+    # Simulate camera-based reset detection (replace with real logic)
+    # For now, if board is empty, consider reset detected
+    is_empty = all(cell == 0 for row in game_board.board_array.tolist() for cell in row)
+    if reset_required and is_empty:
+        reset_required = False
+    message = None
+    if winner is not None:
+        message = "Game over! Winner: {}. Please clean the board.".format(
+            "Player" if winner == 1 else "Bot")
+        reset_required = True
+    elif reset_required:
+        message = "Please clean the board to start a new game."
+    return StatusResponse(
+        board=game_board.board_array.tolist(),
+        winner=winner,
+        turn=turn,
+        valid_moves=game_board.get_valid_locations(),
+        game_over=winner is not None,
+        reset_required=reset_required,
+        message=message
+    )
+
+def get_bot_move(board, difficulty):
+    from plays import easy_play, medium_play, hard_play, optimal_play
+    if difficulty == 'easy':
+        return easy_play(board)
+    elif difficulty == 'medium':
+        return medium_play(board)
+    elif difficulty == 'hard':
+        return hard_play(board)
+    elif difficulty == 'impossible':
+        return optimal_play(board, lookup_table)
+    else:
+        return easy_play(board)

@@ -81,13 +81,13 @@ void loop() {
   // upon bytes available in the serial interface
   if(Serial.available()) {
   // Set the target position:
-    pos = Serial.parseInt();
-
-    if(pos == 100) {
+    pos = Serial.read();
+    if(pos>9 || pos<0) Serial.print("Error, incorrect input: "); Serial.println(pos);
+    if(pos == 8) { //load coin
       coinDispenserServo.write(80);
       delay(1500);
       coinDispenserServo.write(170);
-    } else if(pos == 200) {
+    } else if(pos == 9) { // drop and go to loader
       coinDropperServo.write(130);
       delay(1500);
       coinDropperServo.write(30);

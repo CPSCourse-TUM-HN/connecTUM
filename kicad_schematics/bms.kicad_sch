@@ -1,0 +1,96 @@
+(kicad_sch
+	(version 20250114)
+	(generator "eeschema")
+	(generator_version "9.0")
+	(uuid "e98a479d-7137-40bf-aed5-a4d8965a6431")
+	(paper "A4")
+	(lib_symbols)
+	(hierarchical_label "3.7V"
+		(shape input)
+		(at 99.06 60.96 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "5eedbca7-d8dd-4f7e-81f7-3daebaba7d90")
+	)
+	(hierarchical_label "LOAD"
+		(shape input)
+		(at 99.06 72.39 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6b49a526-8301-4f8a-a766-eb04771c3fae")
+	)
+	(hierarchical_label "7.4V"
+		(shape input)
+		(at 99.06 64.77 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "6e452771-538e-4482-b32f-9d0560ff3575")
+	)
+	(hierarchical_label "0V"
+		(shape input)
+		(at 99.06 57.15 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "78846820-e3ae-4a38-bafb-28ab717fc792")
+	)
+	(hierarchical_label "11.1V"
+		(shape input)
+		(at 99.06 68.58 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "8860011f-a033-4ba7-a0bf-549aca43318f")
+	)
+	(hierarchical_label "GND (CHARGE)"
+		(shape input)
+		(at 99.06 53.34 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "8f74fa38-86cb-4849-abc1-e6e1a87abb1e")
+	)
+	(hierarchical_label "CHARGE"
+		(shape input)
+		(at 99.06 76.2 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "b86e1760-565e-4a98-bc6f-b4966e77cfbd")
+	)
+	(hierarchical_label "GND (LOAD)"
+		(shape input)
+		(at 99.06 49.53 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "b88bffb8-99e6-42c5-90ee-e9c24ab74aab")
+	)
+)
