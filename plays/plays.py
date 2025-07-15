@@ -50,7 +50,7 @@ def optimal_play(board, saved_moves=None):
         scores = saved_moves[key]
     # Can deduce scores from res for horizontally flipped config due to symmetry
     elif ((flipped_key := board2key(board_arr[:, ::-1])) in saved_moves):
-        scores = saved_moves[flipped_key]
+        scores = saved_moves[flipped_key][::-1]
     else:
         position = Position(board_arr)
         solver = Solver()
