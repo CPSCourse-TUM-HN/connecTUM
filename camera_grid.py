@@ -7,8 +7,8 @@ import modules.grid_detection_param as param
 class Grid:
     def __init__(self, max_frame, success_rate):
         self.frame_count = 0
-        self.grid = np.zeros((6, 7), dtype=int)
-        self.computed_grid = np.zeros((6, 7), dtype=int)
+        self.grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
+        self.computed_grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
 
         self.max_frame = max_frame
         self.success_rate = success_rate
@@ -50,15 +50,15 @@ class Grid:
         self.detect_and_map(mask_array[0], -1, img)
         self.detect_and_map(mask_array[1], 1, img)
 
-        self.grid_accumulator()
+        # Increment the number of frame coumputed
+        self.frame_count += 1
+
+        if self.frame_count >= self.max_frame:
+            self.grid_accumulator()
 
     # Smooth out grid result over max_frame
     # To be counted, a coin should appear at least max_frame*success_rate times
     def grid_accumulator(self):
-        if self.frame_count < self.max_frame:
-            self.frame_count += 1
-            return
-
         new_grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
 
         for i in range(param.ROWS):
@@ -67,10 +67,8 @@ class Grid:
                     new_grid[i][j] = -1 if self.grid[i][j] < 0 else 1
 
         self.frame_count = 0
-        self.grid = np.zeros((6, 7), dtype=int)
+        self.grid = np.zeros((param.ROWS, param.COLUMNS), dtype=int)
         self.computed_grid = new_grid
-        #print("in grid_fix")
-        #print(self.computed_grid)
 
     # Detect coins and map them to a grid position
     def detect_and_map(self, mask, value, img):
@@ -121,7 +119,6 @@ class Grid:
         if outer_grid:
             scaled_radius = round(param.CIRCLE_RADIUS*self.scale_ratio)
             cv2.rectangle(img, (self.start_rect[0] - scaled_radius, self.start_rect[1] - scaled_radius), (self.end_rect[0] + scaled_radius, self.end_rect[1] + scaled_radius), (255, 0, 255), 1)
-
 
     def show(self, cell_size):
         img = np.ones((param.ROWS * cell_size, param.COLUMNS * cell_size, 3), dtype=np.uint8) * 255  # white background
