@@ -51,6 +51,6 @@ The current parameters correspond to a **warm white light** placed above the boa
 If you want to reconfigure the color ranges you can do so by running the ``calibrate_mask_range.py`` file and copy the values in the corresponding configuration file.
 
 Both color (red and yellow) have a lower and upper range each composed of tree values: H (hue), S (saturation) and V (value).
-By experience it is better to first find the value range to make the color *appear* and then tweak the hue and saturation sliders to reduce the noice and get a cleaner detection.
+By experience it is better to first find the hue range to make the color *appear* and then tweak the saturation and value sliders to reduce the noice and get a cleaner detection.
 
 Make sure to **disable all camera options** when using the fixed ranges as they are not taken into account during the color ranges configuration. Those should be use in very specific conditions (e.g. slight changes in light conditions).
