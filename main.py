@@ -22,7 +22,7 @@ no_motors = False
 camera_process = None
 
 def play_game(shared_dict, level, bot_first, play_in_terminal):
-    lookup_table_loc = 'lookup_table.json'
+    lookup_table_loc = 'lookup_table_till_move_10.json'
 
     if os.path.isfile(lookup_table_loc):
         with open(lookup_table_loc, 'r') as file:
@@ -123,10 +123,6 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
         turn ^= 1  # Switch turns
     board.print_final_score(winner)
     shared_dict['game_over'] = True
-
-    # Save learned moves
-    with open(lookup_table_loc, 'w') as file:
-        json.dump(lookup_table, file, indent=4)
 
 def get_input():
     col = None
