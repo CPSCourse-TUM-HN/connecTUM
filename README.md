@@ -1,48 +1,61 @@
 # ConnecTUM
 
 ## Installation
-Create a python environment (not necessary)
-```
+
+### Create a python environment (not necessary)
+
+```bash
 python -m venv venv
 source venv/bin/activate
 ```
 
-Download requirements
-```
-pip install -r requirements.txt
-```
-To start backend Python server, run
-```
-uvicorn api:app --reload
-```
+### Download requirements
 
-## Frontend
-Make sure pnpm is installed
-```
-cd connectum-frontend
-pnpm install
-```
-Run frontend
-```
-pnpm dev
+```bash
+pip install -r requirements.txt
 ```
 
 ## Usage
-```
-main.py [-h] [-b] [-t] [--no-camera] [--no-motors] [CONFIG_FILE]
+
+```bash
+usage: main.py [-h] [-l {easy,medium,hard,impossible}] [-b] [-t] [--no-camera] [--no-motors] [CONFIG_FILE]
 
 positional arguments:
-  CONFIG_FILE      Path to a configuration file for the camera
+  CONFIG_FILE           Path to a configuration file for the camera
 
 options:
-  -h, --help       show this help message and exit
-  -b, --bot-first  Make the bot play the first move
-  -t               Play a game only in the terminal (equivalent to: --no-camera --no-motors)
-  --no-camera      Play a game using the terminal instead of the camera
-  --no-motors      Play a game without moving the motors
+  -h, --help            show this help message and exit
+  -l {easy,medium,hard,impossible}, --level {easy,medium,hard,impossible}
+                        Select the level of difficulty (Default: impossible)
+  -b, --bot-first       Make the bot play the first move
+  -t                    Play a game only in the terminal (equivalent to: --no-camera --no-motors)
+  --no-camera           Play a game using the terminal instead of the camera
+  --no-motors           Play a game without moving the motors
 ```
 
-### Note on the camera
+### Graphic Interface
+
+Start backend python server:
+
+```bash
+uvicorn api:app --reload
+```
+
+Make sure pnpm is installed:
+
+```bash
+cd connectum-frontend
+pnpm install
+```
+
+And then run with:
+
+```bash
+pnpm dev
+```
+
+## Note on the camera
+
 In this v1, the detection of the coins relies on **fixed color ranges** to detect and create the red and yellow masks.
 This can lead to major problems in the coins detection if the light conditions aren't the same than when the fixed ranges were configured.
 
