@@ -124,7 +124,6 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     board.print_final_score(winner)
     shared_dict['game_over'] = True
 
-
 def get_input():
     col = None
 
