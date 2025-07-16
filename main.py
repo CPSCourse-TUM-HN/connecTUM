@@ -21,7 +21,7 @@ no_motors = False
 
 camera_process = None
 
-def play_game(shared_dict, bot_first, play_in_terminal):
+def play_game(shared_dict, level, bot_first, play_in_terminal):
     lookup_table_loc = 'lookup_table.json'
 
     if os.path.isfile(lookup_table_loc):
@@ -42,7 +42,6 @@ def play_game(shared_dict, bot_first, play_in_terminal):
         'hard': hard_play,
         'impossible': lambda board: optimal_play(board, lookup_table),
     }
-    mode = 'impossible'
     winner = param.EMPTY
 
     # Wait for camera to start producing data
@@ -106,7 +105,7 @@ def play_game(shared_dict, bot_first, play_in_terminal):
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
-            col = play_alg[mode](board)
+            col = play_alg[level](board)
             game_over = board.play_turn(col, param.BOT_PIECE)
             send_integer(col)
             send_integer(9)
@@ -159,6 +158,7 @@ if __name__ == "__main__":
     # Args parser
     parser = argparse.ArgumentParser()
     parser.add_argument("CONFIG_FILE", type=str, nargs="?", help="Path to a configuration file for the camera")
+    parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)]")
     parser.add_argument("-b", "--bot-first", help="Make the bot play the first move", action="store_true")
     parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
     parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
@@ -188,11 +188,12 @@ if __name__ == "__main__":
         camera_process = mp.Process(target=camera_processing, args=(args.CONFIG_FILE, grid, shared_dict))
         camera_process.start()
 
-        play_game(shared_dict, args.bot_first, False)
+        play_game(shared_dict, args.level[0], args.bot_first, False)
         camera.destroy()
         camera_process.join()
         exit(0)
     else:
         print("Terminal mode")
-        play_game({}, args.bot_first, True)
+        print(args.level)
+        play_game({}, args.level[0], args.bot_first, True)
         exit(0)
