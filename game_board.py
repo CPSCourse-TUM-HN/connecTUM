@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import modules.board_param as param
 
@@ -7,27 +8,33 @@ class Board:
 			self.board_array = args[0]
 		else:
 			self.board_array = np.zeros((param.ROW_COUNT, param.COLUMN_COUNT), dtype=np.int8)
+
+		self.winning_cells = []
 		
 
 	def pretty_print_board(self):
 		flipped_board = np.flipud(self.board_array)
 
-		print("\033[0;37;41m 0 \033[0;37;41m 1 \033[0;37;41m 2 \033[0;37;41m 3 \033[0;37;41m 4 \033[0;37;41m 5 \033[0;37;41m 6 \033[0m")
-		for i in flipped_board:
+		os.system('cls' if os.name == 'nt' else 'clear') # clear the terminal
+		print("\033[0;37;44m 0 \033[0;37;44m 1 \033[0;37;44m 2 \033[0;37;44m 3 \033[0;37;44m 4 \033[0;37;44m 5 \033[0;37;44m 6 \033[0m")
+		for i, row in enumerate(flipped_board):
 			row_str = ""
 
-			for j in i:
-				if j == param.BOT_PIECE:
-					#print(yellow)
-					row_str +="\033[0;37;43m 1 "
-				elif j ==param.PLAYER_PIECE:
-					row_str +="\033[0;37;44m 2 "
+			for j, cell in enumerate(row):
+				if cell == param.BOT_PIECE and (i, j) in self.winning_cells:
+					row_str +="\033[0;37;42m 2 " # green
+				elif cell == param.BOT_PIECE:
+					row_str +="\033[0;37;43m 2 " # yellow
+				elif cell == param.PLAYER_PIECE and (i, j) in self.winning_cells:
+					row_str +="\033[0;37;42m 1 " # green
+				elif cell ==param.PLAYER_PIECE:
+					row_str +="\033[0;37;41m 1 " # red
 				else:
 					#print black
-					row_str +="\033[0;37;45m   "
+					row_str +="\033[0;37;46m   " # cyan
 
 			print(row_str+"\033[0m")
-		print("\033[0;37;41m 0 \033[0;37;41m 1 \033[0;37;41m 2 \033[0;37;41m 3 \033[0;37;41m 4 \033[0;37;41m 5 \033[0;37;41m 6 \033[0m")
+		print("\033[0;37;44m 0 \033[0;37;44m 1 \033[0;37;44m 2 \033[0;37;44m 3 \033[0;37;44m 4 \033[0;37;44m 5 \033[0;37;44m 6 \033[0m")
 
 	def get_valid_locations(self):
 		"""
@@ -91,30 +98,37 @@ class Board:
 				break
 
 	def winning_move(self, piece):
+		flipped_board = np.flipud(self.board_array)
+
 		# Check valid horizontal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.ROW_COUNT):
-				if all(self.board_array[r][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(flipped_board[r][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+					self.winning_cells = [(r, c + i) for i in range(param.WINDOW_LENGTH)]
 					return True
 
 		# Check valid vertical locations for win
 		for c in range(param.COLUMN_COUNT):
 			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
-				if all(self.board_array[r + i][c] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(flipped_board[r + i][c] == piece for i in range(param.WINDOW_LENGTH)):
+					self.winning_cells = [(r + i, c) for i in range(param.WINDOW_LENGTH)]
 					return True
 
 		# Check valid positive diagonal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.ROW_COUNT - param.WINDOW_LENGTH + 1):
-				if all(self.board_array[r + i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(flipped_board[r + i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+					self.winning_cells = [(r + i, c + i) for i in range(param.WINDOW_LENGTH)]
 					return True
 
 		# check valid negative diagonal locations for win
 		for c in range(param.COLUMN_COUNT - param.WINDOW_LENGTH + 1):
 			for r in range(param.WINDOW_LENGTH - 1, param.ROW_COUNT):
-				if all(self.board_array[r - i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+				if all(flipped_board[r - i][c + i] == piece for i in range(param.WINDOW_LENGTH)):
+					self.winning_cells = [(r - i, c + i) for i in range(param.WINDOW_LENGTH)]
 					return True
 
+		self.winning_cells = []
 		return False
 
 	def score_position(self, piece):
@@ -202,6 +216,6 @@ class Board:
 			if self.winning_move(piece):
 				if display_board:
 					self.pretty_print_board()
-					print(f"{'PLAYER 1' if piece == param.PLAYER_PIECE else 'BOT'} WINS!")
+					print(f"{'PLAYER ' if piece == param.PLAYER_PIECE else 'BOT'} WINS!")
 				return True  # Game over
 		return False  # Game continues
