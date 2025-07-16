@@ -22,7 +22,7 @@ no_motors = False
 camera_process = None
 
 def play_game(shared_dict, level, bot_first, play_in_terminal):
-    lookup_table_loc = 'lookup_table.json'
+    lookup_table_loc = 'lookup_table_till_move_10.json'
 
     if os.path.isfile(lookup_table_loc):
         with open(lookup_table_loc, 'r') as file:
