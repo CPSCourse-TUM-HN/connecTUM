@@ -45,7 +45,9 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     winner = param.EMPTY
 
     # Wait for camera to start producing data
-    print("Waiting for camera to initialize...")
+    if not play_in_terminal:
+        print("Waiting for camera to initialize...")
+    
     while not play_in_terminal and ('grid_ready' not in shared_dict or not shared_dict['grid_ready']):
         #print(shared_dict.get("grid_ready", "not there"))
         if shared_dict["camera_error"] is not None:
@@ -53,7 +55,7 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
             exit(1)
         pass
 
-    print("Camera ready, game starting!")
+    print("Camera ready or not required, game starting!")
 
     # HARDWARE INITIALIZATION
     send_integer(7)
@@ -126,7 +128,6 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     with open(lookup_table_loc, 'w') as file:
         json.dump(lookup_table, file, indent=4)
 
-
 def get_input():
     col = None
 
@@ -158,7 +159,7 @@ if __name__ == "__main__":
     # Args parser
     parser = argparse.ArgumentParser()
     parser.add_argument("CONFIG_FILE", type=str, nargs="?", help="Path to a configuration file for the camera")
-    parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)]")
+    parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)")
     parser.add_argument("-b", "--bot-first", help="Make the bot play the first move", action="store_true")
     parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
     parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
