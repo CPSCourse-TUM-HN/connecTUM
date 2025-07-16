@@ -57,7 +57,6 @@ class Camera:
         if self.gui:
             self.gui.start(self.config.camera_options)
 
-
     @staticmethod
     def gray_world(image):
         avg_bgr = np.mean(image, axis=(0, 1))
@@ -114,6 +113,7 @@ class Camera:
 
         # Copy the original image
         original_img = image.copy()
+        grid_calc = image.copy()
 
         # Put back the original image to RGB if needed
         if self.config.CAMERA == param.PI_CAMERA:
@@ -123,12 +123,6 @@ class Camera:
         if self.gui:
             self.config.camera_options = self.gui.get_checkbox_values(self.config.camera_options)
 
-        # Copy image
-        grid_calc = image.copy()
-
-        # Convert to HSV
-        corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
         if self.config.camera_options.WHITE_BALANCE:
             radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
             padding = round(param.PADDING_TOP*grid.scale_ratio)
@@ -137,9 +131,11 @@ class Camera:
         if self.config.camera_options.GRAY_WORLD:
             image = Camera.gray_world(image)
 
-        corrected_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        # Convert to HSV
+        hsv_img = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        
         if self.config.camera_options.GLOBAL_NORMALIZATION:
-            corrected_img = Camera.global_normalization(corrected_img, self.ref_img)
+            hsv_img = Camera.global_normalization(hsv_img, self.ref_img)
 
         if self.config.COLOR_MODE == param.FIX_RANGE:
             red_l = np.array (self.config.RED_L, np.uint8)
@@ -150,15 +146,15 @@ class Camera:
         elif self.config.COLOR_MODE == param.DYNAMIC_RANGE:
             radius = round(param.CIRCLE_RADIUS*grid.scale_ratio)
             padding = round(param.PADDING_TOP*grid.scale_ratio)
-            red_l, red_u = Camera.dynamic_range(corrected_img, (grid.min_circle[0] - radius, grid.min_circle[1] - radius), (grid.min_circle[0] + radius, grid.min_circle[1] + radius), grid_calc, (0, 0, 255))
-            yellow_l, yellow_u = Camera.dynamic_range(corrected_img, (grid.min_circle[0] - radius, grid.min_circle[1] + radius + padding), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*3 + padding), grid_calc, (0, 255, 255))
+            red_l, red_u = Camera.dynamic_range(hsv_img, (grid.min_circle[0] - radius, grid.min_circle[1] - radius), (grid.min_circle[0] + radius, grid.min_circle[1] + radius), grid_calc, (0, 0, 255))
+            yellow_l, yellow_u = Camera.dynamic_range(hsv_img, (grid.min_circle[0] - radius, grid.min_circle[1] + radius + padding), (grid.min_circle[0] + radius, grid.min_circle[1] + radius*3 + padding), grid_calc, (0, 255, 255))
 
-        if self.config.camera_options.BLURR:
-            corrected_img = cv2.GaussianBlur(corrected_img, (5, 5), 0)
+        if self.config.camera_options.BLUR:
+            hsv_img = cv2.GaussianBlur(hsv_img, (5, 5), 0)
 
         # Create masks
-        red_mask = cv2.inRange(corrected_img, red_l, red_u)
-        yellow_mask = cv2.inRange(corrected_img, yellow_l, yellow_u)
+        red_mask = cv2.inRange(hsv_img, red_l, red_u)
+        yellow_mask = cv2.inRange(hsv_img, yellow_l, yellow_u)
 
         # Dilate masks to fill small holes
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
@@ -175,7 +171,7 @@ class Camera:
         # Print the grid mask
         grid.draw_grid_mask(grid_calc)
 
-        # Detect and map red (1) and yellow (2) circles
+        # Detect and map red and yellow circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
 
         # Resize to same shape
