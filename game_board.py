@@ -10,29 +10,30 @@ class Board:
 			self.board_array = np.zeros((param.ROW_COUNT, param.COLUMN_COUNT), dtype=np.int8)
 
 		self.winning_cells = []
+		self.last_play = (-1, -1)
 		
-
 	def pretty_print_board(self):
+		flipped_last_play = (5 - self.last_play[0], self.last_play[1])
 		flipped_board = np.flipud(self.board_array)
 
 		os.system('cls' if os.name == 'nt' else 'clear') # clear the terminal
 		print("\033[0;37;44m 0 \033[0;37;44m 1 \033[0;37;44m 2 \033[0;37;44m 3 \033[0;37;44m 4 \033[0;37;44m 5 \033[0;37;44m 6 \033[0m")
 		for i, row in enumerate(flipped_board):
-			row_str = ""
+			row_str = "" 
 
 			for j, cell in enumerate(row):
-				if cell == param.BOT_PIECE and (i, j) in self.winning_cells:
-					row_str +="\033[0;37;42m 2 " # green
+				if (i, j) in self.winning_cells:
+					text = "42m " + ("1" if cell == param.PLAYER_PIECE else "2") # green
 				elif cell == param.BOT_PIECE:
-					row_str +="\033[0;37;43m 2 " # yellow
-				elif cell == param.PLAYER_PIECE and (i, j) in self.winning_cells:
-					row_str +="\033[0;37;42m 1 " # green
-				elif cell ==param.PLAYER_PIECE:
-					row_str +="\033[0;37;41m 1 " # red
+					text = "43m 2" # yellow
+				elif cell == param.PLAYER_PIECE:
+					text = "41m 1" # red
 				else:
-					#print black
-					row_str +="\033[0;37;46m   " # cyan
+					text = "46m  " # cyan
 
+				row_str += "\033[0;37;" + text + ("*" if flipped_last_play == (i, j) else " ")
+
+			# print(repr(row_str))
 			print(row_str+"\033[0m")
 		print("\033[0;37;44m 0 \033[0;37;44m 1 \033[0;37;44m 2 \033[0;37;44m 3 \033[0;37;44m 4 \033[0;37;44m 5 \033[0;37;44m 6 \033[0m")
 
@@ -95,6 +96,7 @@ class Board:
 		for row in range(param.ROW_COUNT):
 			if self.board_array[row][col] == 0:
 				self.board_array[row][col] = piece
+				self.last_play = (row, col)
 				break
 
 	def winning_move(self, piece):
