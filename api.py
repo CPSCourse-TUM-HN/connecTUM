@@ -56,6 +56,11 @@ class StatusResponse(BaseModel):
     reset_required: bool
     message: Optional[str]
 
+class MagazineStatusResponse(BaseModel):
+    magazine1_full: bool
+    magazine2_full: bool
+    # Add other magazine fields as needed
+
 # Add logging for unhandled exceptions
 def log_exception(request, exc):
     logging.error(f"Unhandled exception: {exc}")
@@ -68,7 +73,25 @@ app.add_exception_handler(Exception, log_exception)
 
 @app.post("/start", response_model=BoardResponse)
 def start_game_with_options(req: StartGameRequest):
-    global game_board, winner, turn, selected_difficulty, reset_required, selected_debug, lookup_table, selected_training_mode
+    global game_board, winner, turn, selected_difficulty, reset_required, selected_debug, lookup_table, selected_training_mode, last_start_req
+
+    # Store the request for potential auto-restart
+    last_start_req = req
+
+    # Check magazine status before starting game
+    magazine1_full = check_magazine_1_status()
+    magazine2_full = check_magazine_2_status()
+
+    # Only allow game start if both magazines are full (full=True)
+    if not magazine1_full or not magazine2_full:
+        magazines_status = []
+        if not magazine1_full:
+            magazines_status.append("Magazine 1 is empty")
+        if not magazine2_full:
+            magazines_status.append("Magazine 2 is empty")
+        error_message = f"Cannot start game: {', '.join(magazines_status)}. Please fill the magazines before starting."
+        raise HTTPException(status_code=400, detail=error_message)
+
     game_board = Board()
     winner = None
     selected_difficulty = req.difficulty
@@ -93,15 +116,32 @@ def start_game_with_options(req: StartGameRequest):
 
 @app.post("/move", response_model=BoardResponse)
 def make_move(move: MoveRequest):
-    global game_board, winner, turn, selected_difficulty, selected_debug, lookup_table, selected_training_mode
-    if game_board is None:
-        raise HTTPException(status_code=400, detail="Game not started.")
+    global game_board, winner, turn, selected_difficulty, selected_debug, lookup_table, selected_training_mode, last_start_req, paused_on_empty
+
+    # Check magazine status FIRST before any other checks
+    magazine1_full = check_magazine_1_status()
+    magazine2_full = check_magazine_2_status()
+
+    # Pause game if magazines are empty
+    if not magazine1_full or not magazine2_full:
+        paused_on_empty = True
+        magazines_status = []
+        if not magazine1_full:
+            magazines_status.append("Magazine 1 is empty")
+        if not magazine2_full:
+            magazines_status.append("Magazine 2 is empty")
+        error_message = f"Cannot make move: {', '.join(magazines_status)}. Please fill the magazines before continuing."
+        raise HTTPException(status_code=400, detail=error_message)
+
+
+    # Then check game state
     if not hasattr(game_board, 'play_turn'):
         raise HTTPException(status_code=500, detail="Board object missing play_turn method.")
     if winner is not None:
         raise HTTPException(status_code=400, detail="Game is over.")
     if move.column not in game_board.get_valid_locations():
         raise HTTPException(status_code=400, detail="Invalid move.")
+
     # Player move (either human or algorithm in debug mode)
     if selected_debug:
         col = get_bot_move(game_board, selected_difficulty)
@@ -188,6 +228,49 @@ def get_status():
         reset_required=reset_required,
         message=message
     )
+
+@app.get("/magazine-status", response_model=MagazineStatusResponse)
+def check_if_magazine_empty():
+    """
+    Check the status of both magazines.
+    Returns True if magazine is full, False if empty.
+
+    TODO: Implement actual hardware/sensor logic here
+    """
+    # Placeholder logic - replace with actual implementation
+    # This could involve checking sensors, camera detection, etc.
+
+    # For now, simulate some logic (replace with real implementation)
+    import random
+
+    # Example: Check magazine 1 (red coins)
+    magazine1_full = check_magazine_1_status()
+
+    # Example: Check magazine 2 (yellow coins)
+    magazine2_full = check_magazine_2_status()
+
+    return MagazineStatusResponse(
+        magazine1_full=magazine1_full,
+        magazine2_full=magazine2_full
+    )
+
+def check_magazine_1_status() -> bool:
+    """
+    Check if magazine 1 (red coins) is full.
+    TODO: Implement actual sensor/hardware logic
+    """
+    # Placeholder - replace with actual implementation
+    # Could involve checking weight sensors, optical sensors, etc.
+    return True  # Simulating empty magazine for testing
+
+def check_magazine_2_status() -> bool:
+    """
+    Check if magazine 2 (yellow coins) is full.
+    TODO: Implement actual sensor/hardware logic
+    """
+    # Placeholder - replace with actual implementation
+    # Could involve checking weight sensors, optical sensors, etc.
+    return True  # Simulating empty magazine for testing
 
 def get_bot_move(board, difficulty):
     from plays import easy_play, medium_play, hard_play, optimal_play
