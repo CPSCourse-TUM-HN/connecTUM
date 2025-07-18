@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from pydantic import BaseModel
 from typing import Optional, List
 from game_board import Board
@@ -7,7 +7,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 from fastapi.responses import JSONResponse
-from connect4_alg import Position, Solver
+# from connect4_alg import Position, Solver
+
+import cv2
+import asyncio
+import uvicorn
 
 app = FastAPI()
 
@@ -30,6 +34,8 @@ selected_difficulty = 'impossible'
 selected_debug = False
 selected_training_mode = False
 lookup_table = dict()
+ws = None
+shared_dict = {}
 
 class MoveRequest(BaseModel):
     column: int
@@ -188,6 +194,33 @@ def get_status():
         reset_required=reset_required,
         message=message
     )
+
+def start_server(shared_dict):
+    print("in api")
+
+    @app.websocket("/ws/camera")
+    async def camera_feed(websocket: WebSocket):
+        await websocket.accept()
+
+        try:
+            while True:
+                if shared_dict["frame"] is None:
+                    continue
+
+                # Encode frame as JPEG in memory
+                success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
+                if not success:
+                    continue
+
+                # Send JPEG bytes over WebSocket
+                await websocket.send_bytes(jpeg.tobytes())
+
+                await asyncio.sleep(0.05)  # ~20 FPS
+        except Exception as e:
+            print("WebSocket closed:", e)
+
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
+
 
 def get_bot_move(board, difficulty):
     from plays import easy_play, medium_play, hard_play, optimal_play

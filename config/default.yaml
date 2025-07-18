@@ -6,7 +6,7 @@ COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
 REF_IMAGE: "assets/reference_image.jpg"
 
 # GUI Flavour
-GUI_FLAVOUR: "DPG" # NO_GUI, BASIC: OpenCV window, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
+GUI_FLAVOUR: "BASIC" # NO_GUI, BASIC: OpenCV window, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
 
 # Options
 camera_options:

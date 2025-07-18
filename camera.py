@@ -10,6 +10,10 @@ from camera_grid import Grid
 from modules import grid_detection_param as param
 from modules.utils import dotdict
 
+import api
+import multiprocessing as mp
+from multiprocessing import Manager
+
 class Camera:
     def __init__(self, config_file):
         # Load configuration from YAML file
@@ -56,6 +60,8 @@ class Camera:
 
         if self.gui:
             self.gui.start(self.config.camera_options)
+
+        self.shared_dict = {}
 
     @staticmethod
     def gray_world(image):
@@ -186,6 +192,8 @@ class Camera:
         if self.config.GUI_FLAVOUR == "BASIC":
             cv2.imshow("Combined View", composite)
             grid.show(cell_size=40)
+            self.shared_dict["frame"] = composite
+            # print(self.shared_dict)
 
         if self.gui:
             self.gui.render(imgs, grid.computed_grid)
@@ -232,9 +240,20 @@ class Camera:
                 shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()
                 shared_dict['grid_ready'] = True
 
+    @staticmethod
+    def start_server(shared_dict):
+        api.start_server(shared_dict)
+
 
 if __name__ == "__main__":
     g = Grid(30, 0.3)
     cam = Camera(sys.argv[1])
 
+    manager = Manager()
+    cam.shared_dict = manager.dict()
+    cam.shared_dict["frame"] = None
+    server_process = mp.Process(target=Camera.start_server, args=(cam.shared_dict,))
+    server_process.start()
+
     cam.start_image_processing(g, {})
+    server_process.join()
