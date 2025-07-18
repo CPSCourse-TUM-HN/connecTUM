@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import logging
 from fastapi.responses import JSONResponse
-# from connect4_alg import Position, Solver
+from connect4_alg import Position, Solver
 
 import cv2
 import asyncio
@@ -243,55 +243,6 @@ def get_status():
         message=message
     )
 
-def start_server(shared_dict):
-    print("in api")
-
-    @app.get("/options_list")
-    def get_options_list():
-        return JSONResponse(content=dict(shared_dict["camera_options"]))
-    
-    @app.post("/option")
-    def update_camera_option(option: OptionUpdate):
-        print(shared_dict["camera_options"][option.label])
-        shared_dict["camera_options"][option.label] = option.value
-        print(shared_dict["camera_options"][option.label])
-
-        print(shared_dict["camera_options"])
-        return {"status": "ok", "updated": {option.label: option.value}}
-
-    @app.websocket("/ws/camera")
-    async def camera_feed(websocket: WebSocket):
-        await websocket.accept()
-
-        try:
-            while True:
-                # Use asyncio.wait_for to handle optional messages while still sending frames
-                try:
-                    data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
-                    # print(f"Received: {data}")
-                    try:
-                        message = json.loads(data)
-                        if "carousel_index" in message:
-                            # print("User is viewing image index:", message["carousel_index"])
-                            shared_dict["carousel_index"] = int(message["carousel_index"])
-                    except json.JSONDecodeError:
-                        print("Invalid JSON:", data)
-                
-                except asyncio.TimeoutError:
-                    pass  # No incoming message; continue sending frame
-
-                if shared_dict["frame"] is not None:
-                    success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
-                    
-                    if success:
-                        await websocket.send_bytes(jpeg.tobytes())
-
-                await asyncio.sleep(0.05)  # ~20 FPS
-        except Exception as e:
-            print("WebSocket closed:", e)
-
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
-
 @app.get("/magazine-status", response_model=MagazineStatusResponse)
 def check_if_magazine_empty():
     """
@@ -347,3 +298,54 @@ def get_bot_move(board, difficulty):
         return optimal_play(board, lookup_table)
     else:
         return easy_play(board)
+
+
+#** Julien's Part (settings/debug) **#
+def start_server(shared_dict):
+    
+    @app.get("/options_list")
+    def get_options_list():
+        return JSONResponse(content=dict(shared_dict["camera_options"]))
+
+    @app.post("/option")
+    def update_camera_option(option: OptionUpdate):
+        shared_dict["camera_options"] = {
+            **shared_dict["camera_options"],
+            option.label: option.value
+        }
+
+        return {"status": "ok", "updated": {option.label: option.value}}
+
+    @app.websocket("/ws/camera")
+    async def camera_feed(websocket: WebSocket):
+        await websocket.accept()
+
+        try:
+            while True:
+                # Use asyncio.wait_for to handle optional messages while still sending frames
+                try:
+                    data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                    # print(f"Received: {data}")
+                    try:
+                        message = json.loads(data)
+                        if "carousel_index" in message:
+                            # print("User is viewing image index:", message["carousel_index"])
+                            shared_dict["carousel_index"] = int(message["carousel_index"])
+                    except json.JSONDecodeError:
+                        print("Invalid JSON:", data)
+                
+                except asyncio.TimeoutError:
+                    pass  # No incoming message; continue sending frame
+
+                if shared_dict["frame"] is not None:
+                    success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
+                    
+                    if success:
+                        await websocket.send_bytes(jpeg.tobytes())
+
+                await asyncio.sleep(0.05)  # ~20 FPS
+        except Exception as e:
+            print("WebSocket closed:", e)
+
+    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
+    

@@ -10,7 +10,6 @@ from camera_grid import Grid
 from modules import grid_detection_param as param
 from modules.utils import dotdict
 
-import api
 import multiprocessing as mp
 from multiprocessing import Manager
 
@@ -39,7 +38,8 @@ class Camera:
         self.picam = None
         self.ref_img = None
         print(f"[Camera] PID: {os.getpid()}")
-        print(self.config)
+        # print(self.config)
+
         # Load reference image
         if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
             self.ref_img = cv2.imread(self.config.REF_IMAGE)
@@ -117,7 +117,6 @@ class Camera:
 
     def analyse_image(self, image, grid, shared_dict):
         self.config.camera_options = shared_dict["camera_options"]
-        # print(shared_dict["camera_options"])
 
         # Flip image if using webcam
         if self.config.CAMERA == param.BUILT_IN_WEBCAM:
@@ -185,25 +184,27 @@ class Camera:
 
         # Detect and map red and yellow circles
         grid.compute_grid([red_mask, yellow_mask], grid_calc)
+        grid_img = grid.generate_window(cell_size=40)
 
-        # Resize to same shape
-        shape = (320, 240)
-        imgs = [cv2.resize(i, shape) for i in [original_img, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask)]]
-
-        # Combine into 2x2 grid
-        top_row = np.hstack((imgs[0], imgs[1]))
-        bottom_row = np.hstack((imgs[2], imgs[3]))
-        composite = np.vstack((top_row, bottom_row))
-
-        if self.config.GUI_FLAVOUR == "BASIC":
-            # cv2.imshow("Combined View", composite)
-            grid_img = grid.show(cell_size=40)
-    
-            if "carousel_index" in shared_dict and shared_dict["carousel_index"] is not None:
-                imgs.append(grid_img)
+        imgs = [original_img, grid_calc, cv2.bitwise_and(image, image, mask=red_mask), cv2.bitwise_and(image, image, mask=yellow_mask), grid_img]
+        
+        if "carousel_index" in shared_dict and shared_dict["carousel_index"] is not None:
                 shared_dict["frame"] = imgs[shared_dict["carousel_index"]]
 
-        if self.gui:
+        if self.config.GUI_FLAVOUR == "BASIC":
+            # Resize to same shape
+            shape = (320, 240)
+            imgs_resized = [cv2.resize(i, shape) for i in imgs]
+
+            # Combine into 2x2 grid
+            top_row = np.hstack((imgs_resized[0], imgs_resized[1]))
+            bottom_row = np.hstack((imgs_resized[2], imgs_resized[3]))
+            composite = np.vstack((top_row, bottom_row))
+
+            cv2.imshow("Combined View", composite)
+            cv2.imshow("Computed Grid", imgs_resized[4])
+
+        elif self.gui:
             self.gui.render(imgs, grid.computed_grid)
 
     def start_image_processing(self, g, shared_dict):
@@ -216,8 +217,7 @@ class Camera:
         else:
             self.webcam = cv2.VideoCapture(self.config.CAMERA)
 
-        print(self.config.camera_options)
-        print(shared_dict)
+
         shared_dict["camera_options"] = dict(self.config.camera_options)
 
         while True:
@@ -251,10 +251,6 @@ class Camera:
             if g.computed_grid is not None:
                 shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()
                 shared_dict['grid_ready'] = True
-
-    @staticmethod
-    def start_server(shared_dict):
-        api.start_server(shared_dict)
 
 
 if __name__ == "__main__":

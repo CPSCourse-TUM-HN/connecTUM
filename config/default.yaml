@@ -5,8 +5,8 @@ CAMERA: 0 # 0: BUILT_IN_WEBCAM, 1: EXTERNAL_WEBCAM, 2: PI_CAMERA
 COLOR_MODE: 1   # 0: FIX_RANGE, 1: DYNAMIC_RANGE
 REF_IMAGE: "assets/reference_image.jpg"
 
-# GUI Flavour
-GUI_FLAVOUR: "BASIC" # NO_GUI, BASIC: OpenCV window, TKINTER, PYQT, DPG: DearPyGUI (not available on raspberry pi)
+# GUI Flavour (specific to the camera. Does not concern the WebApp UI)
+GUI_FLAVOUR: "BASIC" # NO_GUI, BASIC: OpenCV window, DPG: DearPyGUI (not available on raspberry pi)
 
 # Options
 camera_options:

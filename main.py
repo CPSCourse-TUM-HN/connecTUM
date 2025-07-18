@@ -9,7 +9,7 @@ from multiprocessing import Manager
 from camera_grid import Grid
 from camera import Camera
 from game_board import Board
-# from plays import easy_play, medium_play, hard_play, optimal_play
+from plays import easy_play, medium_play, hard_play, optimal_play
 
 import modules.board_param as param
 
@@ -89,7 +89,7 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
                             shared_dict["camera_error"] = None
                             continue
 
-                        if camera is not None and i == "c":
+                        if i == "c":
                             shared_dict["game_over"] = False
                             camera_process.start()
                         elif i == "q":
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
     parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
     parser.add_argument("--no-motors", help="Play a game without moving the motors", action="store_true")
-    parser.add_argument("--no-gui", help="Play a game without the webapp gui", action="store_true")
+    parser.add_argument("--no-gui", help="Play a game without starting the WebApp server", action="store_true")
     args = parser.parse_args()
 
     # Import motor lbrary
@@ -176,6 +176,7 @@ if __name__ == "__main__":
 
     # Create the camera grid
     grid = Grid(30, 0.3)
+    shared_dict = {}
 
     # Create shared dictionary for child processes
     if (not args.no_camera or not args.no_gui) and not args.t:
@@ -205,7 +206,7 @@ if __name__ == "__main__":
         print("Terminal mode")
     
     print(f"Difficulty level: {args.level[0]}")
-    play_game(shared_dict, args.level[0], args.bot_first, args.no_camera)
+    play_game(shared_dict, args.level[0], args.bot_first, (args.no_camera or args.t))
 
     if not args.no_gui:
         webapp_process.join()
