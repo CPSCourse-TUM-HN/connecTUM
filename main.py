@@ -9,7 +9,7 @@ from multiprocessing import Manager
 from camera_grid import Grid
 from camera import Camera
 from game_board import Board
-from plays import easy_play, medium_play, hard_play, optimal_play
+# from plays import easy_play, medium_play, hard_play, optimal_play
 
 import modules.board_param as param
 
@@ -36,12 +36,12 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     board = Board()
     game_over = False
     turn = 0 if not bot_first else 1  # 0: Player, 1: Bot
-    play_alg = {
-        'easy': easy_play,
-        'medium': medium_play,
-        'hard': hard_play,
-        'impossible': lambda board: optimal_play(board, lookup_table),
-    }
+    # play_alg = {
+    #     'easy': easy_play,
+    #     'medium': medium_play,
+    #     'hard': hard_play,
+    #     'impossible': lambda board: optimal_play(board, lookup_table),
+    # }
     winner = param.EMPTY
 
     # Wait for camera to start producing data
@@ -139,6 +139,10 @@ def camera_processing(config_file, grid, shared_dict):
     camera = Camera(config_file)
     camera.start_image_processing(grid, shared_dict)
 
+def webapp_processing(shared_dict):
+    from api import start_server
+    start_server(shared_dict)
+
 def send_integer(number):
     if no_motors:
         return
@@ -160,8 +164,10 @@ if __name__ == "__main__":
     parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
     parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
     parser.add_argument("--no-motors", help="Play a game without moving the motors", action="store_true")
+    parser.add_argument("--no-gui", help="Play a game without the webapp gui", action="store_true")
     args = parser.parse_args()
 
+    # Import motor lbrary
     if not args.no_motors and not args.t:
         import serial
     else:
@@ -171,26 +177,41 @@ if __name__ == "__main__":
     # Create the camera grid
     grid = Grid(30, 0.3)
 
+    # Create shared dictionary for child processes
+    if (not args.no_camera or not args.no_gui) and not args.t:
+        manager = Manager()
+        shared_dict = manager.dict()
+
+    # WebApp process
+    if not args.no_gui and not args.t:
+        shared_dict["frame"] = None
+
+        webapp_process = mp.Process(target=webapp_processing, args=(shared_dict,))
+        webapp_process.start()
+
+    # Camera process
     if not args.no_camera and not args.t:
         if args.CONFIG_FILE is None:
             parser.error("The following arguments is required: CONFIG_FILE")
-        manager = Manager()
 
-        shared_dict = manager.dict()
         shared_dict['game_over'] = False
         shared_dict['grid_ready'] = False
         shared_dict["camera_error"] = None
+        shared_dict["camera_options"] = {}
 
-        camera = Camera(args.CONFIG_FILE)
         camera_process = mp.Process(target=camera_processing, args=(args.CONFIG_FILE, grid, shared_dict))
         camera_process.start()
-
-        play_game(shared_dict, args.level[0], args.bot_first, False)
-        camera.destroy()
-        camera_process.join()
-        exit(0)
     else:
         print("Terminal mode")
-        print(args.level)
-        play_game({}, args.level[0], args.bot_first, True)
-        exit(0)
+    
+    print(f"Difficulty level: {args.level[0]}")
+    play_game(shared_dict, args.level[0], args.bot_first, args.no_camera)
+
+    if not args.no_gui:
+        webapp_process.join()
+
+    if not args.no_camera:
+        camera_process.join()
+
+    exit(0)
+

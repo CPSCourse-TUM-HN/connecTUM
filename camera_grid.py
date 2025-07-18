@@ -120,7 +120,7 @@ class Grid:
             scaled_radius = round(param.CIRCLE_RADIUS*self.scale_ratio)
             cv2.rectangle(img, (self.start_rect[0] - scaled_radius, self.start_rect[1] - scaled_radius), (self.end_rect[0] + scaled_radius, self.end_rect[1] + scaled_radius), (255, 0, 255), 1)
 
-    def show(self, cell_size):
+    def show(self, cell_size, show=False):
         img = np.ones((param.ROWS * cell_size, param.COLUMNS * cell_size, 3), dtype=np.uint8) * 255  # white background
 
         # Draw the array values
@@ -144,5 +144,8 @@ class Grid:
                 # Optional: Draw border
                 cv2.circle(img, (cx, cy), radius, (0, 0, 0), 2)
 
-        # print(grid)
-        cv2.imshow('Grid', img)
+        if show:
+            # print(grid)
+            cv2.imshow('Grid', img)
+            
+        return img

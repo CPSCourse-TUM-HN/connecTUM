@@ -14,6 +14,8 @@ import api
 import multiprocessing as mp
 from multiprocessing import Manager
 
+import os
+
 class Camera:
     def __init__(self, config_file):
         # Load configuration from YAML file
@@ -36,6 +38,7 @@ class Camera:
         self.webcam = None
         self.picam = None
         self.ref_img = None
+        print(f"[Camera] PID: {os.getpid()}")
         print(self.config)
         # Load reference image
         if self.config.COLOR_MODE == param.DYNAMIC_RANGE:
@@ -112,7 +115,10 @@ class Camera:
         if self.gui:
             self.gui.destroy()
 
-    def analyse_image(self, image, grid):
+    def analyse_image(self, image, grid, shared_dict):
+        self.config.camera_options = shared_dict["camera_options"]
+        # print(shared_dict["camera_options"])
+
         # Flip image if using webcam
         if self.config.CAMERA == param.BUILT_IN_WEBCAM:
             image = cv2.flip(image, 1)
@@ -190,10 +196,12 @@ class Camera:
         composite = np.vstack((top_row, bottom_row))
 
         if self.config.GUI_FLAVOUR == "BASIC":
-            cv2.imshow("Combined View", composite)
-            grid.show(cell_size=40)
-            self.shared_dict["frame"] = composite
-            # print(self.shared_dict)
+            # cv2.imshow("Combined View", composite)
+            grid_img = grid.show(cell_size=40)
+    
+            if "carousel_index" in shared_dict and shared_dict["carousel_index"] is not None:
+                imgs.append(grid_img)
+                shared_dict["frame"] = imgs[shared_dict["carousel_index"]]
 
         if self.gui:
             self.gui.render(imgs, grid.computed_grid)
@@ -207,6 +215,10 @@ class Camera:
             self.picam.start()
         else:
             self.webcam = cv2.VideoCapture(self.config.CAMERA)
+
+        print(self.config.camera_options)
+        print(shared_dict)
+        shared_dict["camera_options"] = dict(self.config.camera_options)
 
         while True:
             if self.picam is not None:
@@ -234,7 +246,7 @@ class Camera:
             if h != g.h or w != g.w:
                 g.resize(h, w)
 
-            self.analyse_image(image, g)
+            self.analyse_image(image, g, shared_dict)
 
             if g.computed_grid is not None:
                 shared_dict['current_grid'] = np.flipud(g.computed_grid).copy()

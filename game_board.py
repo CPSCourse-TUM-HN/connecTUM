@@ -16,7 +16,7 @@ class Board:
 		flipped_last_play = (5 - self.last_play[0], self.last_play[1])
 		flipped_board = np.flipud(self.board_array)
 
-		os.system('cls' if os.name == 'nt' else 'clear') # clear the terminal
+		# os.system('cls' if os.name == 'nt' else 'clear') # clear the terminal
 		print("\033[0;37;44m 0 \033[0;37;44m 1 \033[0;37;44m 2 \033[0;37;44m 3 \033[0;37;44m 4 \033[0;37;44m 5 \033[0;37;44m 6 \033[0m")
 		for i, row in enumerate(flipped_board):
 			row_str = "" 
