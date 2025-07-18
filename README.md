@@ -2,10 +2,18 @@
 
 ## Installation
 
+### Install system-level dependencies
+
+```bash
+sudo apt install libcap-dev
+sudo apt install -y python3-picamera2
+
+```
+
 ### Create a python environment (not necessary)
 
 ```bash
-python -m venv venv
+python -m venv venv --system-site-packages
 source venv/bin/activate
 ```
 
