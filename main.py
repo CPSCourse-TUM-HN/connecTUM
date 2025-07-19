@@ -21,7 +21,7 @@ no_motors = False
 
 camera_process = None
 
-def play_game(shared_dict, level, bot_first, play_in_terminal):
+def play_game(shared_dict, level, bot_first, play_in_terminal, print_board):
     lookup_table_loc = 'lookup_table_till_move_10.json'
 
     if os.path.isfile(lookup_table_loc):
@@ -62,17 +62,19 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     send_integer(8)
 
     while not game_over:
-        board.pretty_print_board()
-
+        if print_board:
+            board.pretty_print_board()
+        
         if turn == 0 and ('current_grid' in shared_dict or play_in_terminal):
             valid_move = False
             while not valid_move:
                 if play_in_terminal:
-                    col = get_input()
+                    # col = get_input()
+                    col = 3
                     if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
                         valid_move = True
-                    else:
-                        print("Invalid column. Try again.")
+                    # else:
+                    #     print("Invalid column. Try again.")
                     continue
 
                 # Wait for new grid data from camera
@@ -206,7 +208,9 @@ if __name__ == "__main__":
         print("Terminal mode")
     
     print(f"Difficulty level: {args.level[0]}")
-    play_game(shared_dict, args.level[0], args.bot_first, (args.no_camera or args.t))
+    play_in_terminal = args.no_camera or args.t
+    print_board = play_in_terminal or argrs.no_gui
+    play_game(shared_dict, args.level[0], args.bot_first, play_in_terminal, print_board)
 
     if not args.no_gui:
         webapp_process.join()
