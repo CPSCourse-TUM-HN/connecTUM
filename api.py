@@ -9,6 +9,8 @@ import logging
 from fastapi.responses import JSONResponse
 from connect4_alg import Position, Solver
 
+from camera_grid import Grid
+from camera import Camera
 import argparse
 import main
 
@@ -46,6 +48,7 @@ lookup_table = dict()
 
 shared_dict = {}
 game_process = None
+camera_process = None
 
 class MoveRequest(BaseModel):
     column: int
@@ -82,6 +85,9 @@ class MagazineStatusResponse(BaseModel):
 class OptionUpdate(BaseModel):
     label: str
     value: bool
+
+class StartCameraRequest(BaseModel):
+    file_path: str
 
 # Add logging for unhandled exceptions
 def log_exception(request, exc):
@@ -317,8 +323,14 @@ def run_game(args):
 
     main.start_game(shared_dict, args)
 
+def run_camera(config_file, shared_dict):
+    grid = Grid(30, 0.3)
+    camera = Camera(config_file)
+
+    camera.start_image_processing(grid, shared_dict)
+
 @app.post("/new_game")
-async def new_game(option: StartGameRequest):
+def new_game(option: StartGameRequest):
     args = argparse.Namespace(
         CONFIG_FILE="config/picam.yaml",
         level=['impossible'],
@@ -334,6 +346,25 @@ async def new_game(option: StartGameRequest):
 
     return {"status": "game started"}
 
+@app.post("/start_camera")
+def start_camera(config: StartCameraRequest):
+    if config.file_path not in ["config/default.yaml", "config/picam.yaml"]:
+        return {"error": "The file path provided is not correct"}
+    
+    camera_process = mp.Process(target=run_camera, args=(config.file_path, shared_dict))
+    camera_process.start()
+
+    return {"status": "camera started"}
+
+@app.get("/kill_camera")
+def kill_camera():
+    if camera_process is None:
+        return JSONResponse({"error": "There is no camera initialized"})
+    
+    camera_process.join()
+    camera_process = None
+
+    return JSONResponse({"status": "Camera successfully killed"})
     
 @app.get("/options_list")
 def get_options_list():
