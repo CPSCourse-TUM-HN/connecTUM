@@ -3,7 +3,7 @@
 sudo apt install libcap-dev
 sudo apt install -y python3-picamera2
 sudo apt install gnome-terminal
-sudo apt install nodejs sunpm 
+sudo apt install nodejs npm 
 npm install -g pnpm
 
 python -m venv venv --system-site-packages
