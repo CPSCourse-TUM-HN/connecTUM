@@ -11,7 +11,7 @@ source venv/bin/activate
 
 pip install -r requirements.txt
 
-cd ~/Desktop/connectum/connectum-frontend
+cd ~/Desktop/connectum-v2/connectum-frontend
 pnpm install
 
 deactivate
