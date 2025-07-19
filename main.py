@@ -19,9 +19,10 @@ baud_rate = 9600
 timeout_sec = 2
 no_motors = False
 
+serial = None
 camera_process = None
 
-def play_game(shared_dict, level, bot_first, play_in_terminal, print_board):
+def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
     lookup_table_loc = 'lookup_table_till_move_10.json'
 
     if os.path.isfile(lookup_table_loc):
@@ -62,15 +63,14 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, print_board):
     send_integer(8)
 
     while not game_over:
-        if print_board:
+        if not no_print:
             board.pretty_print_board()
         
         if turn == 0 and ('current_grid' in shared_dict or play_in_terminal):
             valid_move = False
             while not valid_move:
                 if play_in_terminal:
-                    # col = get_input()
-                    col = 3
+                    col = get_input()
                     if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
                         valid_move = True
                     # else:
@@ -80,24 +80,6 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, print_board):
                 # Wait for new grid data from camera
                 new_grid = None
                 while not play_in_terminal and new_grid is None:
-                    if shared_dict["camera_error"] is not None:
-                        shared_dict["game_over"] = True # Force the camera to destroy itself
-                        camera_process.join()
-                        print("An error has occured with the camera.\nIf the issue has been fixed, you can restart the camera by pressing 'c', if not you can quit this program with 'q'.")
-
-                        i = None
-                        while i not in ["q", "c"]:
-                            i = input("Please enter 'c' or 'q':")
-                            shared_dict["camera_error"] = None
-                            continue
-
-                        if i == "c":
-                            shared_dict["game_over"] = False
-                            camera_process.start()
-                        elif i == "q":
-                            print("Camera has not been fixed. Exit program.")
-                            exit(1)
-
                     if 'current_grid' in shared_dict:
                         new_grid = shared_dict['current_grid'].copy()
 
@@ -141,10 +123,6 @@ def camera_processing(config_file, grid, shared_dict):
     camera = Camera(config_file)
     camera.start_image_processing(grid, shared_dict)
 
-def webapp_processing(shared_dict):
-    from api import start_server
-    start_server(shared_dict)
-
 def send_integer(number):
     if no_motors:
         return
@@ -156,41 +134,19 @@ def send_integer(number):
     except serial.SerialException as e:
         print(f"Serial error: {e}")
 
-
-if __name__ == "__main__":
-    # Args parser
-    parser = argparse.ArgumentParser()
-    parser.add_argument("CONFIG_FILE", type=str, nargs="?", help="Path to a configuration file for the camera")
-    parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)")
-    parser.add_argument("-b", "--bot-first", help="Make the bot play the first move", action="store_true")
-    parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
-    parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
-    parser.add_argument("--no-motors", help="Play a game without moving the motors", action="store_true")
-    parser.add_argument("--no-gui", help="Play a game without starting the WebApp server", action="store_true")
-    args = parser.parse_args()
+def start_game(shared_dict, args):
+    global no_motors, serial
 
     # Import motor lbrary
     if not args.no_motors and not args.t:
-        import serial
+        import serial as serial_module
+        serial = serial_module
     else:
         no_motors = True
         print("No motors")
 
     # Create the camera grid
     grid = Grid(30, 0.3)
-    shared_dict = {}
-
-    # Create shared dictionary for child processes
-    if (not args.no_camera or not args.no_gui) and not args.t:
-        manager = Manager()
-        shared_dict = manager.dict()
-
-    # WebApp process
-    if not args.no_gui and not args.t:
-        shared_dict["frame"] = None
-
-        webapp_process = mp.Process(target=webapp_processing, args=(shared_dict,))
-        webapp_process.start()
 
     # Camera process
     if not args.no_camera and not args.t:
@@ -204,19 +160,32 @@ if __name__ == "__main__":
 
         camera_process = mp.Process(target=camera_processing, args=(args.CONFIG_FILE, grid, shared_dict))
         camera_process.start()
+
     else:
         print("Terminal mode")
-    
+
     print(f"Difficulty level: {args.level[0]}")
-    play_in_terminal = args.no_camera or args.t
-    print_board = play_in_terminal or argrs.no_gui
-    play_game(shared_dict, args.level[0], args.bot_first, play_in_terminal, print_board)
+    play_game(shared_dict, args.level[0], args.bot_first, (args.no_camera or args.t), args.no_print)
 
-    if not args.no_gui:
-        webapp_process.join()
-
-    if not args.no_camera:
+    if not args.no_camera and not args.t:
         camera_process.join()
 
-    exit(0)
 
+if __name__ == "__main__":
+    manager = Manager()
+    shared_dict = manager.dict()
+
+    # Args Parser
+    parser = argparse.ArgumentParser()
+    parser.add_argument("CONFIG_FILE", type=str, nargs="?", help="Path to a configuration file for the camera")
+    parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)")
+    parser.add_argument("-b", "--bot-first", help="Make the bot play the first move", action="store_true")
+    parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
+    parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
+    parser.add_argument("--no-motors", help="Play a game without moving the motors", action="store_true")
+    parser.add_argument("--no-print", help="Play a game without printing the board in the terminal", action="store_true")
+    
+    args = parser.parse_args()
+
+    start_game(shared_dict, args)
+    exit(0)

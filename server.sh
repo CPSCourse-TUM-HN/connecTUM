@@ -3,10 +3,9 @@
 # Go into the environment
 source venv/bin/activate
 
-# Start backend (main.py)
+# Start backend in new terminal (api.py)
 cd ~/Desktop/connectum-v2 || exit
-#gnome-terminal -- bash -c "python3 main.py --no-motors --no-camera; exec bash" &
-python3 main.py --no-motors --no-camera &
+gnome-terminal -- bash -c "uvicorn api:app; exec bash"
 
 # Start frontend in new terminal
 cd ~/Desktop/connectum-v2/connectum-frontend || exit

@@ -9,9 +9,14 @@ import logging
 from fastapi.responses import JSONResponse
 from connect4_alg import Position, Solver
 
+import argparse
+import main
+
+import multiprocessing as mp
+from multiprocessing import Manager
+
 import cv2
 import asyncio
-import uvicorn
 
 import os
 
@@ -38,8 +43,9 @@ selected_difficulty = 'impossible'
 selected_debug = False
 selected_training_mode = False
 lookup_table = dict()
-ws = None
+
 shared_dict = {}
+game_process = None
 
 class MoveRequest(BaseModel):
     column: int
@@ -56,6 +62,8 @@ class StartGameRequest(BaseModel):
     who_starts: str  # 'player' or 'bot'
     debug: bool = False
     training_mode: bool = False
+    no_motors = False
+    no_camera = False
 
 class StatusResponse(BaseModel):
     board: List[List[int]]
@@ -301,56 +309,80 @@ def get_bot_move(board, difficulty):
 
 
 #** Julien's Part (settings/debug) **#
-def start_server(shared_dict):
+
+def run_game(args):
+    manager = Manager()
+    shared_dict = manager.dict()
+    shared_dict["frame"] = None
+
+    main.start_game(shared_dict, args)
+
+@app.post("/new_game")
+async def new_game(option: StartGameRequest):
+    args = argparse.Namespace(
+        CONFIG_FILE="config/picam.yaml",
+        level=['impossible'],
+        bot_first=False,
+        t=False,
+        no_camera=False,
+        no_motors=True,
+        no_print=False
+    )
+
+    game_process = mp.Process(target=run_game, args=(args,))
+    game_process.start()
+
+    return {"status": "game started"}
+
     
-    @app.get("/options_list")
-    def get_options_list():
-        if "camera_options" not in shared_dict:
-            return JSONResponse({"error": "There is no camera initialized"})
-        return JSONResponse(content=dict(shared_dict["camera_options"]))
+@app.get("/options_list")
+def get_options_list():
+    if "camera_options" not in shared_dict:
+        return JSONResponse({"error": "There is no camera initialized"})
+    return JSONResponse(content=dict(shared_dict["camera_options"]))
 
-    @app.post("/option")
-    def update_camera_option(option: OptionUpdate):
-        if "camera_options" not in shared_dict:
-            return {"error": "There is no camera initialized"}
-        
-        shared_dict["camera_options"] = {
-            **shared_dict["camera_options"],
-            option.label: option.value
-        }
+@app.post("/option")
+def update_camera_option(option: OptionUpdate):
+    if "camera_options" not in shared_dict:
+        return {"error": "There is no camera initialized"}
+    
+    shared_dict["camera_options"] = {
+        **shared_dict["camera_options"],
+        option.label: option.value
+    }
 
-        return {"status": "ok", "updated": {option.label: option.value}}
+    return {"status": "ok", "updated": {option.label: option.value}}
 
-    @app.websocket("/ws/camera")
-    async def camera_feed(websocket: WebSocket):
-        await websocket.accept()
+@app.websocket("/ws/camera")
+async def camera_feed(websocket: WebSocket):
+    await websocket.accept()
 
-        try:
-            while True:
-                # Use asyncio.wait_for to handle optional messages while still sending frames
+    try:
+        while True:
+            # Use asyncio.wait_for to handle optional messages while still sending frames
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                # print(f"Received: {data}")
                 try:
-                    data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
-                    # print(f"Received: {data}")
-                    try:
-                        message = json.loads(data)
-                        if "carousel_index" in message:
-                            # print("User is viewing image index:", message["carousel_index"])
-                            shared_dict["carousel_index"] = int(message["carousel_index"])
-                    except json.JSONDecodeError:
-                        print("Invalid JSON:", data)
+                    message = json.loads(data)
+                    if "carousel_index" in message:
+                        # print("User is viewing image index:", message["carousel_index"])
+                        shared_dict["carousel_index"] = int(message["carousel_index"])
+                except json.JSONDecodeError:
+                    print("Invalid JSON:", data)
+            
+            except asyncio.TimeoutError:
+                pass  # No incoming message; continue sending frame
+
+            if shared_dict["frame"] is not None:
+                success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
                 
-                except asyncio.TimeoutError:
-                    pass  # No incoming message; continue sending frame
+                if success:
+                    await websocket.send_bytes(jpeg.tobytes())
 
-                if shared_dict["frame"] is not None:
-                    success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
-                    
-                    if success:
-                        await websocket.send_bytes(jpeg.tobytes())
+            await asyncio.sleep(0.05)  # ~20 FPS
+    except Exception as e:
+        print("WebSocket closed:", e)
 
-                await asyncio.sleep(0.05)  # ~20 FPS
-        except Exception as e:
-            print("WebSocket closed:", e)
-
-    uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
+# uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
     
