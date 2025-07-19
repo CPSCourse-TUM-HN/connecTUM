@@ -305,10 +305,15 @@ def start_server(shared_dict):
     
     @app.get("/options_list")
     def get_options_list():
+        if "camera_options" not in shared_dict:
+            return JSONResponse({"error": "There is no camera initialized"})
         return JSONResponse(content=dict(shared_dict["camera_options"]))
 
     @app.post("/option")
     def update_camera_option(option: OptionUpdate):
+        if "camera_options" not in shared_dict:
+            return {"error": "There is no camera initialized"}
+        
         shared_dict["camera_options"] = {
             **shared_dict["camera_options"],
             option.label: option.value

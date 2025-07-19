@@ -7,10 +7,10 @@
 ```bash
 sudo apt install libcap-dev
 sudo apt install -y python3-picamera2
-
+sudo apt install gnome-terminal
 ```
 
-### Create a python environment (not necessary)
+### Create a python environment
 
 ```bash
 python -m venv venv --system-site-packages
@@ -25,8 +25,8 @@ pip install -r requirements.txt
 
 ## Usage
 
-```bash
-usage: main.py [-h] [-l {easy,medium,hard,impossible}] [-b] [-t] [--no-camera] [--no-motors] [CONFIG_FILE]
+```text
+usage: main.py [-h] [-l {easy,medium,hard,impossible}] [-b] [-t] [--no-camera] [--no-motors] [--no-gui] [CONFIG_FILE]
 
 positional arguments:
   CONFIG_FILE           Path to a configuration file for the camera
@@ -39,6 +39,7 @@ options:
   -t                    Play a game only in the terminal (equivalent to: --no-camera --no-motors)
   --no-camera           Play a game using the terminal instead of the camera
   --no-motors           Play a game without moving the motors
+  --no-gui              Play a game without starting the WebApp server
 ```
 
 ### Graphic Interface
@@ -49,17 +50,22 @@ Start backend python server:
 uvicorn api:app --reload
 ```
 
-Make sure pnpm is installed:
+Make sure npm/pnpm is installed (if not run):
+
+```bash
+sudo apt install nodejs sunpm 
+npm install -g pnpm
+```
 
 ```bash
 cd connectum-frontend
-pnpm install
+pnpm install (or npm install)
 ```
 
 And then run with:
 
 ```bash
-pnpm dev
+pnpm dev (or npm run dev)
 ```
 
 ## Note on the camera

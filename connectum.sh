@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Go into the environment
+source venv/bin/activate
+
 # Start backend (main.py)
 cd ~/Desktop/connectum || exit
 python3 main.py &

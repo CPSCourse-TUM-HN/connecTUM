@@ -36,12 +36,12 @@ def play_game(shared_dict, level, bot_first, play_in_terminal):
     board = Board()
     game_over = False
     turn = 0 if not bot_first else 1  # 0: Player, 1: Bot
-    # play_alg = {
-    #     'easy': easy_play,
-    #     'medium': medium_play,
-    #     'hard': hard_play,
-    #     'impossible': lambda board: optimal_play(board, lookup_table),
-    # }
+    play_alg = {
+        'easy': easy_play,
+        'medium': medium_play,
+        'hard': hard_play,
+        'impossible': lambda board: optimal_play(board, lookup_table),
+    }
     winner = param.EMPTY
 
     # Wait for camera to start producing data
