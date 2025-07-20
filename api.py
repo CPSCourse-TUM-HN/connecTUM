@@ -65,8 +65,8 @@ class StartGameRequest(BaseModel):
     who_starts: str  # 'player' or 'bot'
     debug: bool = False
     training_mode: bool = False
-    no_motors = False
-    no_camera = False
+    no_motors: bool = False
+    no_camera: bool = False
 
 class StatusResponse(BaseModel):
     board: List[List[int]]
@@ -336,7 +336,7 @@ def new_game(option: StartGameRequest):
         level=['impossible'],
         bot_first=False,
         t=False,
-        no_camera=False,
+        no_camera=True,
         no_motors=True,
         no_print=False
     )

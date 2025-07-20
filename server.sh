@@ -5,11 +5,11 @@ source venv/bin/activate
 
 # Start backend in new terminal (api.py)
 cd ~/Desktop/connectum-v2 || exit
-gnome-terminal -- bash -c "uvicorn api:app; exec bash"
+gnome-terminal -- bash -c "source venv/bin/activate & uvicorn api:app; exec bash"
 
 # Start frontend in new terminal
 cd ~/Desktop/connectum-v2/connectum-frontend || exit
-gnome-terminal -- bash -c "npm run dev; exec bash"
+gnome-terminal -- bash -c "source venv/bin/activate & npm run dev; exec bash"
 
 # Open browser to the frontend
 sleep 8
