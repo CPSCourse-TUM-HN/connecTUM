@@ -13,13 +13,7 @@ from plays import easy_play, medium_play, hard_play, optimal_play
 
 import modules.board_param as param
 
-# HARDWARE INITIALIZATION
-serial_port = '/dev/ttyUSB0'
-baud_rate = 9600
-timeout_sec = 2
-no_motors = False
-
-serial = None
+motor_controller = None
 camera_process = None
 
 def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
@@ -59,8 +53,8 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
     print("Camera ready or not required, game starting!")
 
     # HARDWARE INITIALIZATION
-    send_integer(7)
-    send_integer(8)
+    if motor_controller:
+        motor_controller.initialize_to_game_state()
 
     while not game_over:
         if not no_print:
@@ -93,9 +87,7 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
         else:
             col = play_alg[level](board)
             game_over = board.play_turn(col, param.BOT_PIECE)
-            send_integer(col)
-            send_integer(9)
-            send_integer(8)
+            play_bot_turn_on_board(col)
             if game_over:
                 winner = param.BOT_PIECE
 
@@ -107,6 +99,17 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
         turn ^= 1  # Switch turns
     board.print_final_score(winner)
     shared_dict['game_over'] = True
+
+def play_bot_turn_on_board(col):
+    if motor_controller is None:
+        return
+    
+    motor_controller.activate_loader(motor_controller.get_loader_index())
+
+    motor_controller.move_stepper_to(col + 1)
+    motor_controller.drop_token()
+
+    motor_controller.move_stepper_to_loader()
 
 def get_input():
     col = None
@@ -123,24 +126,13 @@ def camera_processing(config_file, grid, shared_dict):
     camera = Camera(config_file)
     camera.start_image_processing(grid, shared_dict)
 
-def send_integer(number):
-    if no_motors:
-        return
-
-    try:
-        with serial.Serial(serial_port, baud_rate, timeout=timeout_sec) as ser:
-            ser.write(bytes([number]))
-            print(f"Sent integer '{number}' to ESP32 on {serial_port}")
-    except serial.SerialException as e:
-        print(f"Serial error: {e}")
-
 def start_game(shared_dict, args):
     global no_motors, serial
 
     # Import motor lbrary
     if not args.no_motors and not args.t:
-        import serial as serial_module
-        serial = serial_module
+        import MechanicalSystemController as motor_controller_module
+        motor_controller = motor_controller_module.MechanicalSystemController()
     else:
         no_motors = True
         print("No motors")

@@ -14,4 +14,6 @@ pip install -r requirements.txt
 cd ~/Desktop/connectum-v2/connectum-frontend
 pnpm install
 
+chmod +x ~/Desktop/connectum-v2/server.py
+
 deactivate

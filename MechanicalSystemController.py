@@ -386,6 +386,23 @@ class MechanicalSystemController:
             print(f"Stepper move error: {e}")
             raise
 
+    def move_stepper_to_loader(self):
+        """
+        Move the stepper to the closest loader if not empty
+
+        Returns:
+            int: Index of loader at the current position
+        """
+        if self.current_position in [0, 8]:
+            return self.get_loader_index()
+
+        if self.current_position <= 4 and self.is_loader_full(1):
+            self.move_stepper_to(0)
+            return 1
+        else:
+            self.move_stepper_to(8)
+            return 2
+
     def get_current_position_mm(self):
         """
         Get the current position in millimeters.
@@ -490,7 +507,34 @@ class MechanicalSystemController:
         except Exception as e:
             print(f"Shutdown error: {e}")
 
+    # --- Game Method ---
 
+    def initialize_to_game_state(self):
+        """
+        Move the stepper and unload/load coins to a start position
+        """
+
+        self.move_stepper_to(1)
+        self.drop_token()
+
+        self.move_stepper_to(0)
+        self.activate_loader()
+
+    def get_loader_index(self):
+        """
+        Retrieve the index of loader at the current position
+
+        Returns:
+            int: Loader index or -1 if the stepper is not positioned at a loader 
+        """
+
+        if self.current_position == 0:
+            return 1
+        
+        if self.current_position == 8:
+            return 2
+        
+        return -1
 
 
 
