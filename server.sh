@@ -1,15 +1,24 @@
 #!/bin/bash
 
-# Go into the environment
-source venv/bin/activate
-
-# Start backend in new terminal (api.py)
+# Go into the connectum folder
 cd ~/Desktop/connectum-v2 || exit
-gnome-terminal -- bash -c "source venv/bin/activate & uvicorn api:app; exec bash"
 
-# Start frontend in new terminal
+# Go into the environment
+source venv/bin/activate || exit
+
+# Start backend in background
+uvicorn api:app > ~/Desktop/connectum-v2/log/api.log 2>&1 &
+
+API_PID = $!
+
+# Start frontend in background
 cd ~/Desktop/connectum-v2/connectum-frontend || exit
-gnome-terminal -- bash -c "source venv/bin/activate & npm run dev; exec bash"
+npm run dev > ~/Desktop/connectum-v2/log/webapp.log 2>&1 &
+
+WEBAPP_PID = $!
+
+echo "[API]: $API_PID"
+echo "[WEBAPP]: $WEBAPP_PID"
 
 # Open browser to the frontend
 sleep 8
