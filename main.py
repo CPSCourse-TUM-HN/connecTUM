@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import time
 
 import multiprocessing as mp
 from multiprocessing import Manager
@@ -29,6 +30,11 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
 
 
     board = Board()
+    shared_dict['board'] = board.board_array
+    shared_dict['valid_moves'] = board.get_valid_locations()
+    shared_dict['winner'] = None
+    shared_dict['turn'] = 0 if not bot_first else 1
+
     game_over = False
     turn = 0 if not bot_first else 1  # 0: Player, 1: Bot
     play_alg = {
@@ -58,6 +64,7 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
 
     while not game_over:
         valid_move = False
+        col = None # Initialize col before the loop
 
         if not no_print:
             board.pretty_print_board()
@@ -65,24 +72,42 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
         if turn == 0 and ('current_grid' in shared_dict or play_in_terminal):
             while not valid_move:
                 if play_in_terminal:
-                    col = get_input()
-                    if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
+                    if no_print:
+                        # Get move from API via shared_dict
+                        if "player_move" in shared_dict:
+                            col = shared_dict.pop('player_move') # Use pop to consume the move
+                            if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
+                                valid_move = True
+                            else:
+                                # Invalid move from API, wait for a valid one
+                                continue
+                        else:
+                            # Wait for API to provide a move
+                            time.sleep(0.05)
+                            continue
+                    else:
+                        col = get_input()
+                        if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
+                            valid_move = True
+                        # else:
+                        #     print("Invalid column. Try again.")
+                        continue
+                else:
+                    # Wait for new grid data from camera
+                    new_grid = None
+                    while not play_in_terminal and new_grid is None:
+                        if 'current_grid' in shared_dict:
+                            new_grid = shared_dict['current_grid'].copy()
+
+                    col = board.get_valid_state(new_grid)
+                    if col is not None:
                         valid_move = True
-                    # else:
-                    #     print("Invalid column. Try again.")
-                    continue
+                        shared_dict['last_player_move'] = col  # Store the move
 
-                # Wait for new grid data from camera
-                new_grid = None
-                while not play_in_terminal and new_grid is None:
-                    if 'current_grid' in shared_dict:
-                        new_grid = shared_dict['current_grid'].copy()
-
-                col = board.get_valid_state(new_grid)
-                if col is not None:
-                    valid_move = True
-                    shared_dict['last_player_move'] = col  # Store the move
+            if col is None: # Safeguard
+                continue
             game_over = board.play_turn(col, param.PLAYER_PIECE)
+            shared_dict['board'] = board.board_array
             if game_over:
                 winner = param.PLAYER_PIECE
         else:
@@ -111,6 +136,10 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
                 motor_controller.reset_drop_servo()
                 motor_controller.move_stepper_to_loader()
 
+                # Check if magazines are empty
+                shared_dict["magazine_1_empty"] = motor_controller.is_loader_empty(1)
+                shared_dict["magazine_2_empty"] = motor_controller.is_loader_empty(2)
+
             game_over = board.play_turn(col, param.BOT_PIECE)
             if game_over:
                 winner = param.BOT_PIECE
@@ -121,6 +150,13 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
             game_over = True
             winner = param.EMPTY
         turn ^= 1  # Switch turns
+
+        # Update shared state for API
+        shared_dict['board'] = board.board_array
+        shared_dict['valid_moves'] = board.get_valid_locations()
+        shared_dict['winner'] = winner if game_over else None
+        shared_dict['turn'] = turn
+
     board.print_final_score(winner)
     shared_dict['game_over'] = True
 
@@ -185,7 +221,7 @@ if __name__ == "__main__":
     parser.add_argument("CONFIG_FILE", type=str, nargs="?", help="Path to a configuration file for the camera")
     parser.add_argument("-l", "--level", type=str, nargs=1, default=["impossible"], choices=["easy", "medium", "hard", "impossible"], help="Select the level of difficulty (Default: impossible)")
     parser.add_argument("-b", "--bot-first", help="Make the bot play the first move", action="store_true")
-    parser.add_argument("-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
+    parser.add_argument( "-t", help="Play a game only in the terminal (equivalent to: --no-camera --no-motors)", action="store_true")
     parser.add_argument("--no-camera", help="Play a game using the terminal instead of the camera", action="store_true")
     parser.add_argument("--no-motors", help="Play a game without moving the motors", action="store_true")
     parser.add_argument("--no-print", help="Play a game without printing the board in the terminal", action="store_true")

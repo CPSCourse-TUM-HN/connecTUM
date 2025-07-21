@@ -15,11 +15,12 @@ interface BoardResponse {
 }
 
 interface MagazineStatus {
-    magazine1_full: boolean;
-    magazine2_full: boolean;
+    magazine_1_empty: boolean;
+    magazine_2_empty: boolean;
 }
 
 const API_URL = "http://localhost:8000"; // Change if backend runs elsewhere
+const WS_URL = API_URL.replace(/^http/, 'ws');
 
 function StartingScreen({
                             difficulty,
@@ -112,10 +113,10 @@ function StartingScreen({
                     {starters.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
-            <div style={{width: '100%', display: 'flex', alignItems: 'center', gap: 0}}>
+            <div style={{width: '100%', display: 'flex', alignItems: 'center', gap: 8}}>
                 <input type="checkbox" id="trainingMode" checked={trainingMode}
-                       onChange={e => setTrainingMode(e.target.checked)} style={{width: 20, height: 20}}/>
-                <label htmlFor="trainingMode" style={{fontWeight: 600, fontSize: 18, color: '#f8fafc'}}>Training
+                       onChange={e => setTrainingMode(e.target.checked)} style={{width: 20, height: 20, cursor: 'pointer'}}/>
+                <label htmlFor="trainingMode" style={{fontWeight: 600, fontSize: 18, color: '#f8fafc', cursor: 'pointer'}}>Training
                     Mode</label>
             </div>
             <button onClick={startGame} disabled={loading} style={{
@@ -691,7 +692,7 @@ function MagazineStatusComponent() {
 
         const connectWebSocket = () => {
             try {
-                ws = new WebSocket(`ws://localhost:8000/ws/magazine-status`);
+                ws = new WebSocket(`ws://localhost:8000/ws/magazine_status`);
 
                 ws.onopen = () => {
                     console.log("Magazine status WebSocket connected");
@@ -769,7 +770,7 @@ function MagazineStatusComponent() {
     return (
         <div style={{display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                {magazineStatus?.magazine1_full ?
+                {magazineStatus?.magazine_1_empty === false ?
                     <img
                         src="/green_coins.png"
                         alt="Green coins magazine 1"
@@ -781,7 +782,7 @@ function MagazineStatusComponent() {
                         style={{width: 32, height: 32}}
                     />
                 }
-                {magazineStatus?.magazine2_full ? <img
+                {magazineStatus?.magazine_2_empty === false ? <img
                         src="/green_coins.png"
                         alt="Green coins magazine 2"
                         style={{width: 32, height: 32}}
@@ -830,19 +831,60 @@ export default function Home() {
         }
     }, [nickname]);
 
+    // WebSocket connection for live game state updates
+    useEffect(() => {
+        if (screen !== 'game') {
+            return;
+        }
+
+        const ws = new WebSocket(`${WS_URL}/ws/game_state`);
+
+        ws.onopen = () => {
+            console.log("Game state WebSocket connected");
+            setError(null); // Clear connection errors on successful connect
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const newState = JSON.parse(event.data);
+                setState(newState);
+            } catch (error) {
+                console.error("Failed to parse game state from WebSocket:", error);
+            }
+        };
+
+        ws.onclose = () => {
+            console.log("Game state WebSocket disconnected");
+        };
+
+        ws.onerror = (error) => {
+            console.error("Game state WebSocket error:", error);
+            setError("Connection to game server lost. Please reset.");
+        };
+
+        // Cleanup on component unmount or screen change
+        return () => {
+            if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                ws.close();
+            }
+        };
+    }, [screen]);
+
     // Start game only after setup
     const startGame = async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetch(`${API_URL}/start`, {
+            const res = await fetch(`${API_URL}/new_game`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({
                     difficulty,
                     who_starts: whoStarts,
                     training_mode: trainingMode,
-                    nickname: nickname.trim()
+                    nickname: nickname.trim(),
+                    no_camera: true, // Assuming debug mode from GUI
+                    no_motors: true  // Assuming debug mode from GUI
                 }),
             });
 
@@ -855,15 +897,29 @@ export default function Home() {
                     setError(errorData.detail || "Failed to start game");
                 }
                 // Stop execution since the game failed to start
+                setLoading(false);
                 return;
             }
 
-            setState(await res.json());
-            setSetup(false);
-            setScreen('game');
+            // Game started, now fetch initial state
+            try {
+                const statusRes = await fetch(`${API_URL}/status`);
+                if (statusRes.ok) {
+                    const initialState = await statusRes.json();
+                    setState(initialState);
+                    setSetup(false);
+                    setScreen('game');
+                } else {
+                     setError("Failed to fetch initial game state.");
+                }
+            } catch (e) {
+                setError("Could not connect to backend to get game state.");
+            } finally {
+                setLoading(false);
+            }
+
         } catch (err) {
             setError("Could not connect to backend. Is the server running?");
-        } finally {
             setLoading(false);
         }
     };
@@ -892,7 +948,6 @@ export default function Home() {
                 return; // Stop execution after handling the error
             }
 
-            setState(await res.json());
         } catch (e) {
             console.log('Move failed with exception:', e);
             setError("Move failed");
