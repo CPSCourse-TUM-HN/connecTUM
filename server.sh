@@ -31,17 +31,4 @@ echo "  Frontend: tail -f ./log/webapp.log"
 echo ""
 echo "To stop services: kill $BACKEND_PID $FRONTEND_PID"
 
-# Wait briefly, then try to open the browser on port 3000
-sleep 2
-echo "Opening browser at http://localhost:3000..."
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open http://localhost:3000
-elif command -v gnome-open >/dev/null 2>&1; then
-  gnome-open http://localhost:3000
-elif command -v open >/dev/null 2>&1; then
-  open http://localhost:3000
-else
-  echo "Could not auto-open browser. Please visit http://localhost:3000 manually."
-fi
-
 deactivate
