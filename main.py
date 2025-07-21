@@ -57,11 +57,12 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
         motor_controller.initialize_to_game_state()
 
     while not game_over:
+        valid_move = False
+
         if not no_print:
             board.pretty_print_board()
         
         if turn == 0 and ('current_grid' in shared_dict or play_in_terminal):
-            valid_move = False
             while not valid_move:
                 if play_in_terminal:
                     col = get_input()
@@ -86,8 +87,31 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
                 winner = param.PLAYER_PIECE
         else:
             col = play_alg[level](board)
+            played_pos = -1
+
+            if motor_controller is not None:
+                motor_controller.activate_loader(motor_controller.get_loader_index())
+                motor_controller.move_stepper_to(col + 1)
+                motor_controller.drop_token()
+
+            # Block game if the coin is not properly dropped
+            while not valid_move:
+                # Wait for new grid data from camera
+                new_grid = None
+                while not play_in_terminal and new_grid is None:
+                    if 'current_grid' in shared_dict:
+                        new_grid = shared_dict['current_grid'].copy()
+                        played_pos = board.get_valid_state(new_grid)
+
+                if play_in_terminal or played_pos == col:
+                    valid_move = True
+                    shared_dict["last_bot_move"] = col
+
+            if motor_controller is not None:
+                motor_controller.reset_drop_servo()
+                motor_controller.move_stepper_to_loader()
+
             game_over = board.play_turn(col, param.BOT_PIECE)
-            play_bot_turn_on_board(col)
             if game_over:
                 winner = param.BOT_PIECE
 
@@ -99,17 +123,6 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
         turn ^= 1  # Switch turns
     board.print_final_score(winner)
     shared_dict['game_over'] = True
-
-def play_bot_turn_on_board(col):
-    if motor_controller is None:
-        return
-    
-    motor_controller.activate_loader(motor_controller.get_loader_index())
-
-    motor_controller.move_stepper_to(col + 1)
-    motor_controller.drop_token()
-
-    motor_controller.move_stepper_to_loader()
 
 def get_input():
     col = None

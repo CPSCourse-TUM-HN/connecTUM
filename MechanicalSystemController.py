@@ -359,6 +359,9 @@ class MechanicalSystemController:
                 raise RuntimeError("Cannot move stepper - homing failed")
         
         try:
+            # Make sure the drop servo is in the upright position
+            self.reset_drop_servo()
+            
             # Convert column number to mm position
             target_position_mm = self._column_to_mm(position)
             
@@ -430,13 +433,31 @@ class MechanicalSystemController:
 
     # --- Servo Control ---
 
-    def drop_token(self):
+    def drop_token_and_rest(self):
         """
         Rotate the drop servo to drop a token, then reset.
         """
         try:
             self._set_servo_angle(SERVO_DROP_CHANNEL, SERVO_DROP_ANGLE)
             time.sleep(SERVO_ACTIVATION_TIME)
+            self._set_servo_angle(SERVO_DROP_CHANNEL, 0)
+        except Exception as e:
+            print(f"Drop servo error: {e}")
+
+    def drop_token(self):
+        """
+        Roatate the drop servo to drop a token, without resetting.
+        """
+        try:
+            self._set_servo_angle(SERVO_DROP_CHANNEL, SERVO_DROP_ANGLE)
+        except Exception as e:
+            print(f"Drop servo error: {e}")
+
+    def reset_drop_servo(self):
+        """
+        Roatate the drop servo to reset position
+        """
+        try:
             self._set_servo_angle(SERVO_DROP_CHANNEL, 0)
         except Exception as e:
             print(f"Drop servo error: {e}")
@@ -511,8 +532,9 @@ class MechanicalSystemController:
 
     def initialize_to_game_state(self):
         """
-        Move the stepper and unload/load coins to a start position
+        Home the stepper put it into a ready state to start the game
         """
+        self.home_stepper()
 
         self.move_stepper_to(1)
         self.drop_token()
