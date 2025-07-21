@@ -12,7 +12,6 @@ from connect4_alg import Position, Solver
 from camera_grid import Grid
 from camera import Camera
 import argparse
-import main
 
 import multiprocessing as mp
 from multiprocessing import Manager
@@ -317,6 +316,8 @@ def get_bot_move(board, difficulty):
 #** Julien's Part (settings/debug) **#
 
 def run_game(args):
+    import main
+
     manager = Manager()
     shared_dict = manager.dict()
     shared_dict["frame"] = None
@@ -414,6 +415,4 @@ async def camera_feed(websocket: WebSocket):
             await asyncio.sleep(0.05)  # ~20 FPS
     except Exception as e:
         print("WebSocket closed:", e)
-
-# uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=False)
     

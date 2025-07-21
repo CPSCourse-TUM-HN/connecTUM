@@ -49,15 +49,9 @@ class Camera:
                 exit(1)
         
         # GUI configuration
-        if self.config.GUI_FLAVOUR == "TKINTER":
-            import gui.tkinter_gui as tk_gui
-            self.gui = tk_gui
-        elif self.config.GUI_FLAVOUR == "DPG":
+        if self.config.GUI_FLAVOUR == "DPG":
             import gui.dpg_gui as dpg_gui
             self.gui = dpg_gui
-        elif self.config.GUI_FLAVOUR == "PYQT":
-            import gui.pyqt_gui as pyqt_gui
-            self.gui = pyqt_gui
         else:
             self.gui = None
 
@@ -260,8 +254,5 @@ if __name__ == "__main__":
     manager = Manager()
     cam.shared_dict = manager.dict()
     cam.shared_dict["frame"] = None
-    server_process = mp.Process(target=Camera.start_server, args=(cam.shared_dict,))
-    server_process.start()
 
     cam.start_image_processing(g, {})
-    server_process.join()
