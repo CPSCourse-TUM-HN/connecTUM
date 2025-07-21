@@ -14,11 +14,6 @@ interface BoardResponse {
     move_message?: string;
 }
 
-interface MagazineStatus {
-    magazine_1_empty: boolean;
-    magazine_2_empty: boolean;
-}
-
 const API_URL = "http://localhost:8000"; // Change if backend runs elsewhere
 const WS_URL = API_URL.replace(/^http/, 'ws');
 
@@ -115,8 +110,10 @@ function StartingScreen({
             </div>
             <div style={{width: '100%', display: 'flex', alignItems: 'center', gap: 8}}>
                 <input type="checkbox" id="trainingMode" checked={trainingMode}
-                       onChange={e => setTrainingMode(e.target.checked)} style={{width: 20, height: 20, cursor: 'pointer'}}/>
-                <label htmlFor="trainingMode" style={{fontWeight: 600, fontSize: 18, color: '#f8fafc', cursor: 'pointer'}}>Training
+                       onChange={e => setTrainingMode(e.target.checked)}
+                       style={{width: 20, height: 20, cursor: 'pointer'}}/>
+                <label htmlFor="trainingMode"
+                       style={{fontWeight: 600, fontSize: 18, color: '#f8fafc', cursor: 'pointer'}}>Training
                     Mode</label>
             </div>
             <button onClick={startGame} disabled={loading} style={{
@@ -409,8 +406,8 @@ function LeaderboardScreen({goToStart, currentPlayer}: { goToStart: () => void, 
     const [selectedDifficulty, setSelectedDifficulty] = useState('impossible');
     const [leaderboard, setLeaderboard] = useState<{
         difficulty: string,
-        top_10: {nickname: string, score: number}[],
-        current_player?: {rank: number, nickname: string, score: number},
+        top_10: { nickname: string, score: number }[],
+        current_player?: { rank: number, nickname: string, score: number },
         available_difficulties: string[]
     } | null>(null);
     const [loading, setLoading] = useState(true);
@@ -575,10 +572,10 @@ function LeaderboardScreen({goToStart, currentPlayer}: { goToStart: () => void, 
 
 // Error Dialog Component
 function ErrorDialog({
-                        isOpen,
-                        message,
-                        onClose
-                    }: {
+                         isOpen,
+                         message,
+                         onClose
+                     }: {
     isOpen: boolean;
     message: string;
     onClose: () => void;
@@ -681,14 +678,18 @@ function ErrorDialog({
     );
 }
 
+interface MagazineStatus {
+    magazine_1_empty: boolean;
+    magazine_2_empty: boolean;
+}
+
 function MagazineStatusComponent() {
     const [magazineStatus, setMagazineStatus] = useState<MagazineStatus | null>(null);
     const [wsConnected, setWsConnected] = useState(false);
-    const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
     useEffect(() => {
-        let reconnectTimer: NodeJS.Timeout;
         let ws: WebSocket | null = null;
+        let reconnectTimer: NodeJS.Timeout;
 
         const connectWebSocket = () => {
             try {
@@ -697,7 +698,6 @@ function MagazineStatusComponent() {
                 ws.onopen = () => {
                     console.log("Magazine status WebSocket connected");
                     setWsConnected(true);
-                    setReconnectAttempts(0);
                 };
 
                 ws.onmessage = (event) => {
@@ -709,18 +709,11 @@ function MagazineStatusComponent() {
                     }
                 };
 
-                ws.onclose = (event) => {
-                    console.log("Magazine status WebSocket disconnected", event.code, event.reason);
+                ws.onclose = () => {
+                    console.log("Magazine status WebSocket disconnected");
                     setWsConnected(false);
-
-                    // Only attempt to reconnect if it wasn't a manual close
-                    if (event.code !== 1000) {
-                        setReconnectAttempts(prev => prev + 1);
-                        // Exponential backoff with max 10 seconds
-                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
-                        console.log(`Attempting to reconnect in ${delay}ms...`);
-                        reconnectTimer = setTimeout(connectWebSocket, delay);
-                    }
+                    // Attempt to reconnect after 3 seconds
+                    reconnectTimer = setTimeout(connectWebSocket, 3000);
                 };
 
                 ws.onerror = (error) => {
@@ -728,10 +721,9 @@ function MagazineStatusComponent() {
                     setWsConnected(false);
                 };
             } catch (error) {
-                console.error("Failed to create WebSocket:", error);
-                setWsConnected(false);
-                // Retry after 5 seconds if WebSocket creation fails
-                reconnectTimer = setTimeout(connectWebSocket, 5000);
+                console.error("Failed to create magazine status WebSocket:", error);
+                // Attempt to reconnect after 3 seconds
+                reconnectTimer = setTimeout(connectWebSocket, 3000);
             }
         };
 
@@ -745,13 +737,13 @@ function MagazineStatusComponent() {
                 clearTimeout(reconnectTimer);
             }
             if (ws) {
-                ws.close(1000, 'Component unmounting');
+                ws.close();
             }
         };
-    }, [reconnectAttempts]);
+    }, []);
 
-    // Don't render anything if we don't have status yet
-    if (!magazineStatus && !wsConnected) {
+    // Show connection status or magazine status
+    if (!wsConnected || !magazineStatus) {
         return (
             <div style={{
                 display: 'flex',
@@ -762,7 +754,7 @@ function MagazineStatusComponent() {
                 color: '#64748b',
                 fontSize: 12
             }}>
-                Connecting to system...
+                {!wsConnected ? 'Connecting to system...' : 'Loading magazine status...'}
             </div>
         );
     }
@@ -770,36 +762,37 @@ function MagazineStatusComponent() {
     return (
         <div style={{display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                {magazineStatus?.magazine_1_empty === false ?
+                {!magazineStatus.magazine_1_empty ?
                     <img
-                        src="/green_coins.png"
-                        alt="Green coins magazine 1"
-                        style={{width: 32, height: 32}}
-                    />
-                    : <img
                         src="/red_coins.png"
                         alt="Red coins magazine 1"
                         style={{width: 32, height: 32}}
                     />
-                }
-                {magazineStatus?.magazine_2_empty === false ? <img
+                    : <img
                         src="/green_coins.png"
-                        alt="Green coins magazine 2"
+                        alt="Green coins magazine 1"
                         style={{width: 32, height: 32}}
-                    /> :
-                    <img
+                    />
+                }
+                {!magazineStatus.magazine_2_empty ? <img
                         src="/red_coins.png"
                         alt="Red coins magazine 2"
                         style={{width: 32, height: 32}}
-                    />}
+                    /> :
+                    <img
+                        src="/green_coins.png"
+                        alt="Green coins magazine 2"
+                        style={{width: 32, height: 32}}
+                    />
+                }
             </div>
-            {!wsConnected && (
+            {(!wsConnected) && (
                 <div style={{
                     fontSize: 12,
-                    color: '#ef4444',
+                    color: '#f59e0b',
                     marginLeft: 8
                 }}>
-                    System offline
+                    Connection lost
                 </div>
             )}
         </div>
@@ -837,14 +830,30 @@ export default function Home() {
             return;
         }
 
+        let connectionTimer: NodeJS.Timeout;
+        let mounted = true;
         const ws = new WebSocket(`${WS_URL}/ws/game_state`);
 
+        // Set connection timeout
+        connectionTimer = setTimeout(() => {
+            if (ws.readyState === WebSocket.CONNECTING) {
+                console.log("Game state WebSocket connection timeout");
+                ws.close();
+                if (mounted) {
+                    setError("Connection timeout. Please check if the server is running.");
+                }
+            }
+        }, 5000);
+
         ws.onopen = () => {
+            if (!mounted) return;
             console.log("Game state WebSocket connected");
-            setError(null); // Clear connection errors on successful connect
+            clearTimeout(connectionTimer);
+            setError(null);
         };
 
         ws.onmessage = (event) => {
+            if (!mounted) return;
             try {
                 const newState = JSON.parse(event.data);
                 setState(newState);
@@ -854,16 +863,21 @@ export default function Home() {
         };
 
         ws.onclose = () => {
+            if (!mounted) return;
             console.log("Game state WebSocket disconnected");
+            clearTimeout(connectionTimer);
         };
 
         ws.onerror = (error) => {
+            if (!mounted) return;
             console.error("Game state WebSocket error:", error);
+            clearTimeout(connectionTimer);
             setError("Connection to game server lost. Please reset.");
         };
 
-        // Cleanup on component unmount or screen change
         return () => {
+            mounted = false;
+            clearTimeout(connectionTimer);
             if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
                 ws.close();
             }
@@ -889,7 +903,7 @@ export default function Home() {
             });
 
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ detail: "Failed to parse error response" }));
+                const errorData = await res.json().catch(() => ({detail: "Failed to parse error response"}));
                 if (res.status === 400 && errorData.detail && errorData.detail.includes('Magazine')) {
                     setErrorDialogMessage(errorData.detail);
                     setShowErrorDialog(true);
@@ -910,7 +924,7 @@ export default function Home() {
                     setSetup(false);
                     setScreen('game');
                 } else {
-                     setError("Failed to fetch initial game state.");
+                    setError("Failed to fetch initial game state.");
                 }
             } catch (e) {
                 setError("Could not connect to backend to get game state.");
@@ -936,12 +950,11 @@ export default function Home() {
             });
 
             if (!res.ok) {
-                const errorData = await res.json().catch(() => ({ detail: "Failed to parse error response" }));
+                const errorData = await res.json().catch(() => ({detail: "Failed to parse error response"}));
                 if (res.status === 400 && errorData.detail && errorData.detail.includes('Magazine')) {
                     setErrorDialogMessage(errorData.detail);
                     setShowErrorDialog(true);
-                }
-                 else {
+                } else {
                     // For other errors, use the small inline error text
                     setError(errorData.detail || "Move failed");
                 }

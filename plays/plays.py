@@ -14,6 +14,39 @@ def board2key(board_arr):
     """
     return "".join(map(str, board_arr.flatten()))
 
+def calculate_board_scores(board_arr, saved_moves=None):
+    """
+    Helper function to calculate scores for a board position.
+    First checks lookup table, then falls back to computation if needed.
+
+    :param board_arr: Numpy array representation of board
+    :param saved_moves: Dictionary of board positions to scores (lookup table)
+    :return: List of scores for each column
+    """
+    if saved_moves is None:
+        saved_moves = {}
+
+    key = board2key(board_arr)
+
+    # First try direct lookup
+    if key in saved_moves:
+        return saved_moves[key]
+
+    # Try flipped board lookup
+    flipped_key = board2key(board_arr[:, ::-1])
+    if flipped_key in saved_moves:
+        return saved_moves[flipped_key][::-1]
+
+    # If not in lookup table, compute using algorithm
+    position = Position(board_arr)
+    solver = Solver()
+    scores = solver.analyze(position, False)
+
+    # Cache the result
+    saved_moves[key] = scores
+
+    return scores
+
 def is_terminal_node(board: Board):
     return board.winning_move(param.PLAYER_PIECE) or board.winning_move(param.BOT_PIECE) or len(board.get_valid_locations()) == 0
 
@@ -44,22 +77,8 @@ def optimal_play(board, saved_moves=None):
         saved_moves = {}
 
     board_arr = board.board_array
+    scores = calculate_board_scores(board_arr, saved_moves)
 
-    key = board2key(board_arr)
-    if key in saved_moves:
-        scores = saved_moves[key]
-    # Can deduce scores from res for horizontally flipped config due to symmetry
-    elif ((flipped_key := board2key(board_arr[:, ::-1])) in saved_moves):
-        scores = saved_moves[flipped_key][::-1]
-    else:
-        position = Position(board_arr)
-        solver = Solver()
-        scores = solver.analyze(position, False)
-        saved_moves[key] = scores
-        # # Can also deduce scores for horizontally flipped configuration due to symmetry
-        # flipped_key = board2key(board[:, ::-1])
-        # if not flipped_key in saved_moves:
-        #     saved_moves[flipped_key] = scores[::-1]
     print(scores) # TODO For debugging, remove later
     col = scores.index(max(scores))
     return col

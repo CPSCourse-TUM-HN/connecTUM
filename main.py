@@ -3,6 +3,9 @@ import argparse
 import json
 import os
 import time
+import random
+import logging
+import numpy as np
 
 import multiprocessing as mp
 from multiprocessing import Manager
@@ -14,8 +17,104 @@ from plays import easy_play, medium_play, hard_play, optimal_play
 
 import modules.board_param as param
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 motor_controller = None
 camera_process = None
+
+# Global variables for feedback system
+move_messages = {}
+
+def load_move_messages():
+    """Load move evaluation messages from JSON file"""
+    global move_messages
+    try:
+        with open('move_messages.json', 'r') as f:
+            move_messages = json.load(f)
+        logger.info("Move messages loaded successfully")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.warning(f"Failed to load move messages: {e}")
+        # Fallback to default messages if file is missing
+        move_messages = {
+            "bad": ["That move could use some work.", "Not your best move.", "Try to think ahead next time."],
+            "mid": ["An okay move.", "Decent choice.", "A reasonable play."],
+            "good": ["Nice move!", "Excellent choice!", "Great thinking!", "Well played!"]
+        }
+
+def evaluate_move_quality(board, col, scores):
+    """Evaluate the quality of a player's move based on scores"""
+    if not scores or col >= len(scores):
+        return "mid"  # Default to mid if no scores available
+
+    move_score = scores[col]
+    valid_moves = board.get_valid_locations()
+    valid_scores = [scores[i] for i in valid_moves if i < len(scores)]
+
+    if not valid_scores:
+        return "mid"
+
+    best_score = max(valid_scores)
+    worst_score = min(valid_scores)
+
+    # If all moves have the same score, it's mid
+    if best_score == worst_score:
+        return "mid"
+
+    score_range = best_score - worst_score
+    threshold_good = max(best_score - (score_range * 0.2), -10)  # Top 20%
+    threshold_bad = worst_score + (score_range * 0.3)  # Bottom 30%
+
+    if move_score >= threshold_good:
+        return "good"
+    elif move_score <= threshold_bad:
+        return "bad"
+    else:
+        return "mid"
+
+def get_move_message(quality):
+    """Get a random message for the move quality"""
+    return random.choice(move_messages.get(quality, ["Move made."]))
+
+def evaluate_player_move(board, col, lookup_table, shared_dict):
+    """Evaluate player's move and store feedback in shared_dict"""
+    try:
+        from plays.plays import calculate_board_scores
+
+        # Get scores for current board position
+        scores = calculate_board_scores(board.board_array, lookup_table)
+
+        if scores:
+            quality = evaluate_move_quality(board, col, scores)
+            move_message = get_move_message(quality)
+            logger.info(f"Move quality: {quality}, Message: {move_message}")
+
+            # Store feedback in shared dict
+            shared_dict["move_message"] = move_message
+
+            # Store scores for training mode display
+            training_mode = shared_dict.get("training_mode", False)
+            if training_mode:
+                shared_dict["scores"] = scores
+        else:
+            logger.warning("Could not calculate scores for move evaluation")
+
+    except Exception as e:
+        logger.error(f"Error in move evaluation: {e}")
+
+def update_training_scores(board, lookup_table, shared_dict):
+    """Update scores for training mode display"""
+    training_mode = shared_dict.get("training_mode", False)
+    if training_mode:
+        try:
+            from plays.plays import calculate_board_scores
+            scores = calculate_board_scores(board.board_array, lookup_table)
+            if scores:
+                shared_dict["scores"] = scores
+                logger.info("Training mode scores updated")
+        except Exception as e:
+            logger.error(f"Error updating training scores: {e}")
 
 def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
     lookup_table_loc = 'lookup_table_till_move_10.json'
@@ -23,11 +122,16 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
     if os.path.isfile(lookup_table_loc):
         with open(lookup_table_loc, 'r') as file:
             lookup_table = json.load(file)
-            print(f"Loaded lookup table {lookup_table_loc}.")
+            print(f"Loaded lookup table with {len(lookup_table)} entries.")
     else:
         print(f"The file '{lookup_table_loc}' does not exist.")
         lookup_table = dict()
 
+    # Store lookup table in shared_dict for API access
+    shared_dict['lookup_table'] = lookup_table
+
+    # Load move messages for feedback system
+    load_move_messages()
 
     board = Board()
     shared_dict['board'] = board.board_array
@@ -78,6 +182,14 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
                             col = shared_dict.pop('player_move') # Use pop to consume the move
                             if 0 <= col < param.COLUMN_COUNT and board.is_valid_location(col):
                                 valid_move = True
+
+                                # Evaluate move quality and provide feedback (skip for first move)
+                                total_moves = np.sum(board.board_array != 0)
+                                if total_moves > 0:
+                                    logger.info("Evaluating player move...")
+                                    evaluate_player_move(board, col, lookup_table, shared_dict)
+                                else:
+                                    logger.info("First move - skipping feedback message")
                             else:
                                 # Invalid move from API, wait for a valid one
                                 continue
@@ -110,6 +222,9 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
             shared_dict['board'] = board.board_array
             if game_over:
                 winner = param.PLAYER_PIECE
+            else:
+                # Update training scores after player move if not game over
+                update_training_scores(board, lookup_table, shared_dict)
         else:
             col = play_alg[level](board)
             played_pos = -1
@@ -143,6 +258,9 @@ def play_game(shared_dict, level, bot_first, play_in_terminal, no_print):
             game_over = board.play_turn(col, param.BOT_PIECE)
             if game_over:
                 winner = param.BOT_PIECE
+            else:
+                # Update training scores after bot move if not game over
+                update_training_scores(board, lookup_table, shared_dict)
 
         if len(board.get_valid_locations()) == 0 and not game_over:
             board.pretty_print_board()

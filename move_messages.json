@@ -4,9 +4,9 @@
     "I've seen better moves from a confused squirrel.",
     "Were you aiming for the wrong game? This isn't Jenga.",
     "I'd call that 'strategic,' but that would be lying.",
-    "Even my random number generator is judging you.",
-    "That move just made my CPU cry.",
-    "Oops. Did your cat walk on the keyboard?",
+    "Even the pieces are disappointed in that move.",
+    "That drop just made the crowd go silent — from shock.",
+    "Oops. Did your hand slip or was that intentional?",
     "If blunders were art, this would be a masterpiece.",
     "That move was... interesting. And by interesting, I mean tragic.",
     "Are you trying to help me win? Because it's working."
@@ -14,7 +14,7 @@
   "mid": [
     "Not terrible… not great… just kind of exists.",
     "A safe choice. Like plain toast.",
-    "That move screams 'I panicked and clicked something.'",
+    "That move screams 'I panicked and picked a column.'",
     "Meh. I've seen worse. And better. Mostly better.",
     "Like lukewarm coffee — technically it works.",
     "You're not losing... yet.",
@@ -25,15 +25,14 @@
   ],
   "good": [
     "Okay, okay! I see you, Grandmaster!",
-    "Did you just read my mind? Rude.",
-    "Nice! You made my processors sweat a little.",
-    "Someone's been watching tutorials on the low.",
+    "Did you just read my strategy? Rude.",
+    "Nice! You made me double-check the board.",
+    "Someone’s been practicing — respect.",
     "If moves were pizza, that one was extra cheesy and perfect.",
-    "You keep this up and I'll start calling you 'Player Supreme.'",
+    "You keep this up and I’ll start calling you 'Player Supreme.'",
     "Is this a game or an art exhibit? That was beautiful.",
-    "Alright, who let Magnus Carlsen in here?",
+    "Alright, who let a world champ in here?",
     "10/10 — would recommend to future players.",
-    "You play like you've got a vendetta against robots."
+    "You play like you’ve got a grudge against losing."
   ]
 }
-

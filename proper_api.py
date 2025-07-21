@@ -4,6 +4,7 @@ import json
 import logging
 import multiprocessing as mp
 import os
+import random
 import time
 from contextlib import asynccontextmanager
 from multiprocessing import Manager
@@ -20,7 +21,10 @@ from pydantic import BaseModel
 # Assuming these files exist in the project structure
 from camera import Camera
 from camera_grid import Grid
-from game_board import Board
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 print(f"[API] PID: {os.getpid()}")
 
@@ -28,16 +32,38 @@ print(f"[API] PID: {os.getpid()}")
 camera_process = None
 game_process = None
 
+# Global variables for feedback system
+move_messages = {}
+
+def load_move_messages():
+    """Load move evaluation messages from JSON file"""
+    global move_messages
+    try:
+        with open('move_messages.json', 'r') as f:
+            move_messages = json.load(f)
+        logger.info("Move messages loaded successfully")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logger.warning(f"Failed to load move messages: {e}")
+        # Fallback to default messages if file is missing
+        move_messages = {
+            "bad": ["That move could use some work.", "Not your best move.", "Try to think ahead next time."],
+            "mid": ["An okay move.", "Decent choice.", "A reasonable play."],
+            "good": ["Nice move!", "Excellent choice!", "Great thinking!", "Well played!"]
+        }
+
+# Load move messages on startup
+load_move_messages()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    logger.info("Starting API server...")
     with Manager() as manager:
         app.state.manager = manager
         app.state.shared_dict = manager.dict()
         yield
         # Shutdown
-
+        logger.info("Shutting down API server...")
 
 app = FastAPI(lifespan=lifespan)
 # Allow CORS for all origins (for development)
@@ -72,6 +98,7 @@ class StartGameRequest(BaseModel):
     no_motors: bool = False
     no_camera: bool = False
     nickname: Optional[str] = None
+    training_mode: bool = False
 
 class OptionUpdate(BaseModel):
     label: str
@@ -182,6 +209,52 @@ def get_leaderboard_data(difficulty: str, current_player: Optional[str] = None) 
 
     return result
 
+def get_board_scores(board_array, lookup_table):
+    """
+    Unified function to get scores for a board position.
+    Uses the calculate_board_scores function from plays module.
+    """
+    try:
+        from plays.plays import calculate_board_scores
+        return calculate_board_scores(board_array, lookup_table)
+    except Exception as e:
+        logger.error(f"Error in get_board_scores: {e}")
+        return None
+
+def evaluate_move_quality(board, col, scores):
+    """Evaluate the quality of a player's move based on scores"""
+    if not scores or col >= len(scores):
+        return "mid"  # Default to mid if no scores available
+
+    move_score = scores[col]
+    valid_moves = board.get_valid_locations()
+    valid_scores = [scores[i] for i in valid_moves if i < len(scores)]
+
+    if not valid_scores:
+        return "mid"
+
+    best_score = max(valid_scores)
+    worst_score = min(valid_scores)
+
+    # If all moves have the same score, it's mid
+    if best_score == worst_score:
+        return "mid"
+
+    score_range = best_score - worst_score
+    threshold_good = max(best_score - (score_range * 0.2), -10)  # Top 20%
+    threshold_bad = worst_score + (score_range * 0.3)  # Bottom 30%
+
+    if move_score >= threshold_good:
+        return "good"
+    elif move_score <= threshold_bad:
+        return "bad"
+    else:
+        return "mid"
+
+def get_move_message(quality):
+    """Get a random message for the move quality"""
+    return random.choice(move_messages.get(quality, ["Move made."]))
+
 def get_jsonable_game_state(shared_dict):
     board = shared_dict.get("board")
     if isinstance(board, np.ndarray):
@@ -191,11 +264,17 @@ def get_jsonable_game_state(shared_dict):
     if isinstance(valid_moves, np.ndarray):
         valid_moves = valid_moves.tolist()
 
+    scores = shared_dict.get("scores")
+    if isinstance(scores, np.ndarray):
+        scores = scores.tolist()
+
     result = {
         "board": board,
         "winner": shared_dict.get("winner"),
         "turn": shared_dict.get("turn"),
         "valid_moves": valid_moves,
+        "scores": scores,
+        "move_message": shared_dict.get("move_message"),
     }
 
     # Add final score if game is over
@@ -212,14 +291,15 @@ def get_jsonable_game_state(shared_dict):
             try:
                 add_score(nickname, final_score, difficulty)
                 shared_dict["score_saved"] = True
+                logger.info(f"Score saved for {nickname}: {final_score} on {difficulty}")
             except Exception as e:
-                print(f"Failed to save score: {e}")
+                logger.error(f"Failed to save score: {e}")
 
     return result
 
 def run_game(shared_dict, args):
     import main
-
+    logger.info(f"Starting game process with difficulty: {args.level}")
     shared_dict["frame"] = None
     main.start_game(shared_dict, args)
 
@@ -234,17 +314,11 @@ def make_move(move: MoveRequest, request: Request):
     global game_process, game_args
     shared_dict = request.app.state.shared_dict
 
-    # If game process isn't running, it's the first player move. Start it.
-    if game_process is None and game_args is not None:
-        # Prime the shared dict with the initial board state before starting
-        # This ensures the game process starts with the board as it is.
-        if "board" not in shared_dict:
-             shared_dict["board"] = [[0] * 7 for _ in range(6)]
+    logger.info(f"Player move request: column {move.column}")
 
-        game_process = mp.Process(target=run_game, args=(shared_dict, game_args,))
-        game_process.start()
-        # Wait for process to be ready to accept a move
-        time.sleep(0.5) # A short delay to allow the process to start up
+    # Game process should already be running and waiting for moves
+    if game_process is None:
+        raise HTTPException(status_code=400, detail="Game not started. Please start a new game first.")
 
     if "turn" not in shared_dict or shared_dict.get("turn") != 0:
          raise HTTPException(status_code=400, detail="It's not the player's turn.")
@@ -252,29 +326,34 @@ def make_move(move: MoveRequest, request: Request):
     if "valid_moves" not in shared_dict or move.column not in shared_dict.get("valid_moves", []):
         raise HTTPException(status_code=400, detail="Invalid move.")
 
+    # Send move to game process via shared_dict
     shared_dict["player_move"] = move.column
 
     # Wait for the game process to consume the move
     start_time = time.time()
     while "player_move" in shared_dict:
         time.sleep(0.1)
-        if time.time() - start_time > 5: # 5-second timeout
+        if time.time() - start_time > 30:
+            logger.error("Game process did not respond to player move")
             return JSONResponse(
                 status_code=500,
                 content={"detail": "Game process did not respond to player move."}
             )
 
-    # Now wait for the bot to make its move (turn becomes 0 again)
+    logger.info("Player move processed, waiting for bot response...")
+
+    # Now wait for the bot to make its move
     start_time = time.time()
-    # Wait until it's player's turn again (turn=0) or the game is over (winner is not None)
     while shared_dict.get("turn") != 0 and shared_dict.get("winner") is None:
         time.sleep(0.1)
-        if time.time() - start_time > 20: # 20-second timeout for bot move
+        if time.time() - start_time > 20:
+            logger.error("Bot did not make a move in time")
             return JSONResponse(
                 status_code=500,
                 content={"detail": "Bot did not make a move in time."}
             )
 
+    logger.info("Bot move completed")
     return {"status": "ok"}
 
 @app.get("/status")
@@ -292,10 +371,13 @@ def new_game(option: StartGameRequest, request: Request):
     shared_dict = request.app.state.shared_dict
     manager = request.app.state.manager
 
+    logger.info(f"Starting new game - Difficulty: {option.difficulty}, Who starts: {option.who_starts}, Training mode: {option.training_mode}")
+
     # Terminate any existing game process
     if game_process and game_process.is_alive():
         game_process.terminate()
         game_process.join()
+        logger.info("Terminated existing game process")
     game_process = None
 
     game_args = argparse.Namespace(
@@ -310,36 +392,43 @@ def new_game(option: StartGameRequest, request: Request):
     # Reset shared state for a new game
     shared_dict.clear()
     shared_dict["frame"] = None
-    shared_dict["camera_options"] = manager.dict() # Re-initialize to avoid old data
+    shared_dict["camera_options"] = manager.dict()
     current_nickname = option.nickname or ""
     shared_dict["nickname"] = current_nickname
     shared_dict["difficulty"] = option.difficulty
+    shared_dict["training_mode"] = option.training_mode
     shared_dict["score_saved"] = False
 
-    if game_args.bot_first:
-        # If bot starts, launch the process and wait for its first move
-        game_process = mp.Process(target=run_game, args=(shared_dict, game_args,))
-        game_process.start()
+    # Always start the game process immediately to avoid first-move delay
+    game_process = mp.Process(target=run_game, args=(shared_dict, game_args,))
+    game_process.start()
+    logger.info(f"Game process started ({'bot first' if game_args.bot_first else 'player first'})")
 
+    if game_args.bot_first:
         # Wait for the game process to initialize and bot to move
         start_time = time.time()
-        # Wait until the turn is 0 (player's turn) or the game is over
         while shared_dict.get("turn") != 0 and shared_dict.get("winner") is None:
             time.sleep(0.1)
-            if time.time() - start_time > 20: # 20-second timeout
+            if time.time() - start_time > 30:
+                logger.error("Game process failed to initialize in time")
                 return JSONResponse(
                     status_code=500,
                     content={"detail": "Game process failed to initialize in time."}
                 )
+        logger.info("Bot made first move")
         return {"status": "game started, bot has moved"}
     else:
-        # If player starts, don't start the process yet.
-        # Return an initial empty board state. The process will start on the first /move.
-        initial_board = [[0] * 7 for _ in range(6)]
-        shared_dict["board"] = initial_board
-        shared_dict["turn"] = 0
-        shared_dict["winner"] = None
-        shared_dict["valid_moves"] = list(range(7))
+        # Wait for the game process to initialize and be ready for player move
+        start_time = time.time()
+        while shared_dict.get("turn") is None and shared_dict.get("board") is None:
+            time.sleep(0.1)
+            if time.time() - start_time > 30:
+                logger.error("Game process failed to initialize in time")
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": "Game process failed to initialize in time."}
+                )
+        logger.info("Game ready for player's first move")
         return {"status": "game ready for player move"}
 
 
@@ -437,28 +526,32 @@ async def camera_feed(websocket: WebSocket):
     except Exception as e:
         print("WebSocket closed:", e)
 
-@app.websocket("/ws/magazine_status")
-async def magazine_status_feed(websocket: WebSocket):
-    shared_dict = websocket.app.state.shared_dict
-    await websocket.accept()
-
-    try:
-        while True:
-            status = {
-                "magazine_1_empty": shared_dict.get("magazine_1_empty"),
-                "magazine_2_empty": shared_dict.get("magazine_2_empty"),
-            }
-            await websocket.send_json(status)
-            await asyncio.sleep(1)  # Send status every second
-    except Exception as e:
-        print(f"Magazine status WebSocket closed: {e}")
+# Add connection tracking
+active_connections = {
+    "game_state": set()
+}
 
 @app.websocket("/ws/game_state")
 async def game_state_feed(websocket: WebSocket):
     shared_dict = websocket.app.state.shared_dict
+
+    # Check if we already have too many connections
+    if len(active_connections["game_state"]) >= 5:
+        await websocket.close(code=1008, reason="Too many connections")
+        return
+
     await websocket.accept()
-    last_state_str = None
+    active_connections["game_state"].add(websocket)
+
+    # Send initial state immediately if available
+    initial_state = get_jsonable_game_state(shared_dict)
+
     try:
+        if initial_state.get("board") is not None:
+            await websocket.send_json(initial_state)
+            logger.info(f"Game state WebSocket connected, sent initial state. Active connections: {len(active_connections['game_state'])}")
+
+        last_state_str = None
         while True:
             current_state = get_jsonable_game_state(shared_dict)
 
@@ -468,9 +561,12 @@ async def game_state_feed(websocket: WebSocket):
                     await websocket.send_json(current_state)
                     last_state_str = current_state_str
 
-            await asyncio.sleep(0.1)  # Poll for changes
+            await asyncio.sleep(0.1)  # Reasonable polling interval
     except Exception as e:
-        print(f"Game state WebSocket closed: {e}")
+        logger.info(f"Game state WebSocket closed: {e}")
+    finally:
+        active_connections["game_state"].discard(websocket)
+        logger.info(f"Game state WebSocket disconnected. Active connections: {len(active_connections['game_state'])}")
 
 
 @app.get("/leaderboard")
@@ -516,6 +612,32 @@ def get_leaderboard(difficulty: str = "impossible", current_player: str = ""):
         }
 
     return result
+
+@app.websocket("/ws/magazine_status")
+async def magazine_status_feed(websocket: WebSocket):
+    shared_dict = websocket.app.state.shared_dict
+    await websocket.accept()
+
+    logger.info("Magazine status WebSocket connected")
+
+    try:
+        last_status = None
+        while True:
+            # Check for magazine status in shared_dict
+            current_status = {
+                "magazine_1_empty": shared_dict.get("magazine_1_empty", False),
+                "magazine_2_empty": shared_dict.get("magazine_2_empty", False),
+            }
+
+            # Only send if status changed
+            if current_status != last_status:
+                await websocket.send_json(current_status)
+                last_status = current_status
+                logger.info(f"Magazine status update sent: {current_status}")
+
+            await asyncio.sleep(0.5)  # Check status every 500ms
+    except Exception as e:
+        logger.info(f"Magazine status WebSocket closed: {e}")
 
 if __name__ == '__main__':
     uvicorn.run(app, host="0.0.0.0", port=8000)
