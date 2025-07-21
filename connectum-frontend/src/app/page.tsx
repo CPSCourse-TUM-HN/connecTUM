@@ -421,7 +421,7 @@ function LeaderboardScreen({goToStart, currentPlayer}: { goToStart: () => void, 
                 setLeaderboard(data);
             }
         } catch (error) {
-            console.error('Failed to fetch leaderboard:', error);
+            console.log('Failed to fetch leaderboard:', error);
         } finally {
             setLoading(false);
         }
@@ -688,62 +688,44 @@ function MagazineStatusComponent() {
     const [wsConnected, setWsConnected] = useState(false);
 
     useEffect(() => {
-        let ws: WebSocket | null = null;
-        let reconnectTimer: NodeJS.Timeout;
+        // Only connect if we're in a browser environment
+        if (typeof window === 'undefined') {
+            return;
+        }
 
-        const connectWebSocket = () => {
+        const ws = new WebSocket(`${WS_URL}/ws/magazine_status`);
+
+        ws.onopen = () => {
+            console.log("Magazine status WebSocket connected");
+            setWsConnected(true);
+        };
+
+        ws.onmessage = (event) => {
             try {
-                ws = new WebSocket(`ws://localhost:8000/ws/magazine_status`);
-
-                ws.onopen = () => {
-                    console.log("Magazine status WebSocket connected");
-                    setWsConnected(true);
-                };
-
-                ws.onmessage = (event) => {
-                    try {
-                        const status = JSON.parse(event.data);
-                        setMagazineStatus(status);
-                    } catch (error) {
-                        console.error("Failed to parse magazine status:", error);
-                    }
-                };
-
-                ws.onclose = () => {
-                    console.log("Magazine status WebSocket disconnected");
-                    setWsConnected(false);
-                    // Attempt to reconnect after 3 seconds
-                    reconnectTimer = setTimeout(connectWebSocket, 3000);
-                };
-
-                ws.onerror = (error) => {
-                    console.error("Magazine status WebSocket error:", error);
-                    setWsConnected(false);
-                };
+                const status = JSON.parse(event.data);
+                setMagazineStatus(status);
             } catch (error) {
-                console.error("Failed to create magazine status WebSocket:", error);
-                // Attempt to reconnect after 3 seconds
-                reconnectTimer = setTimeout(connectWebSocket, 3000);
+                console.warn("Failed to parse magazine status:", error);
             }
         };
 
-        // Only connect if we're in a browser environment
-        if (typeof window !== 'undefined') {
-            connectWebSocket();
-        }
+        ws.onclose = () => {
+            console.log("Magazine status WebSocket disconnected");
+            setWsConnected(false);
+        };
+
+        ws.onerror = (error) => {
+            console.warn("Magazine status WebSocket error:", error);
+            setWsConnected(false);
+        };
 
         return () => {
-            if (reconnectTimer) {
-                clearTimeout(reconnectTimer);
-            }
-            if (ws) {
-                ws.close();
-            }
+            ws.close();
         };
     }, []);
 
     // Show connection status or magazine status
-    if (!wsConnected || !magazineStatus) {
+    if (!wsConnected) {
         return (
             <div style={{
                 display: 'flex',
@@ -754,7 +736,23 @@ function MagazineStatusComponent() {
                 color: '#64748b',
                 fontSize: 12
             }}>
-                {!wsConnected ? 'Connecting to system...' : 'Loading magazine status...'}
+                Connecting to system...
+            </div>
+        );
+    }
+
+    if (!magazineStatus) {
+        return (
+            <div style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+                color: '#64748b',
+                fontSize: 12
+            }}>
+                Loading magazine status...
             </div>
         );
     }
@@ -830,54 +828,32 @@ export default function Home() {
             return;
         }
 
-        let connectionTimer: NodeJS.Timeout;
-        let mounted = true;
         const ws = new WebSocket(`${WS_URL}/ws/game_state`);
 
-        // Set connection timeout
-        connectionTimer = setTimeout(() => {
-            if (ws.readyState === WebSocket.CONNECTING) {
-                console.log("Game state WebSocket connection timeout");
-                ws.close();
-                if (mounted) {
-                    setError("Connection timeout. Please check if the server is running.");
-                }
-            }
-        }, 5000);
-
         ws.onopen = () => {
-            if (!mounted) return;
             console.log("Game state WebSocket connected");
-            clearTimeout(connectionTimer);
             setError(null);
         };
 
         ws.onmessage = (event) => {
-            if (!mounted) return;
             try {
                 const newState = JSON.parse(event.data);
                 setState(newState);
             } catch (error) {
-                console.error("Failed to parse game state from WebSocket:", error);
+                console.warn("Failed to parse game state from WebSocket:", error);
             }
         };
 
         ws.onclose = () => {
-            if (!mounted) return;
             console.log("Game state WebSocket disconnected");
-            clearTimeout(connectionTimer);
         };
 
         ws.onerror = (error) => {
-            if (!mounted) return;
-            console.error("Game state WebSocket error:", error);
-            clearTimeout(connectionTimer);
+            console.warn("Game state WebSocket error:", error);
             setError("Connection to game server lost. Please reset.");
         };
 
         return () => {
-            mounted = false;
-            clearTimeout(connectionTimer);
             if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
                 ws.close();
             }
