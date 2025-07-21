@@ -57,6 +57,8 @@ manager = Manager()
 shared_dict = manager.dict()
 
 def camera_processing_target():
+    global shared_dict
+
     """Camera processing function for multiprocessing"""
     try:
         grid = Grid(30, 0.3)
@@ -300,6 +302,8 @@ def play_bot_turn_on_board(col):
     controller.move_stepper_to_loader()
 
 def start_camera_processing():
+    global shared_dict
+
     """Start camera processing for player move detection"""
     global camera_process, shared_dict
 
@@ -325,6 +329,8 @@ def start_camera_processing():
         camera_process = None
 
 def wait_for_player_move():
+    global shared_dict
+
     """Wait for camera to detect player move and return the column"""
     if debug_mode:
         print("[DEBUG MODE] Player move detection bypassed - use UI instead")
@@ -350,6 +356,100 @@ def wait_for_player_move():
         timeout_counter += 1
 
     return None  # Timeout
+
+@app.post("/new_game")
+def new_game(option: StartGameRequest):
+    args = argparse.Namespace(
+        CONFIG_FILE="config/picam.yaml",
+        level=['impossible'],
+        bot_first=False,
+        t=False,
+        no_camera=True,
+        no_motors=True,
+        no_print=False
+    )
+
+    game_process = mp.Process(target=run_game, args=(args,))
+    game_process.start()
+
+    return {"status": "game started"}
+
+@app.post("/start_camera")
+def start_camera(config: StartCameraRequest):
+    global shared_dict
+
+    if config.file_path not in ["config/default.yaml", "config/picam.yaml"]:
+        return {"error": "The file path provided is not correct"}
+    
+    camera_process = mp.Process(target=run_camera, args=(config.file_path, shared_dict))
+    camera_process.start()
+
+    return {"status": "camera started"}
+
+@app.get("/kill_camera")
+def kill_camera():
+    if camera_process is None:
+        return JSONResponse({"error": "There is no camera initialized"})
+    
+    camera_process.join()
+    camera_process = None
+
+    return JSONResponse({"status": "Camera successfully killed"})
+    
+@app.get("/options_list")
+def get_options_list():
+    global shared_dict
+
+    if "camera_options" not in shared_dict:
+        return JSONResponse({"error": "There is no camera initialized"})
+    return JSONResponse(content=dict(shared_dict["camera_options"]))
+
+@app.post("/option")
+def update_camera_option(option: OptionUpdate):
+    global shared_dict
+
+    if "camera_options" not in shared_dict:
+        return {"error": "There is no camera initialized"}
+    
+    shared_dict["camera_options"] = {
+        **shared_dict["camera_options"],
+        option.label: option.value
+    }
+
+    return {"status": "ok", "updated": {option.label: option.value}}
+
+@app.websocket("/ws/camera")
+async def camera_feed(websocket: WebSocket):
+    global shared_dict
+    await websocket.accept()
+
+    try:
+        while True:
+            # Use asyncio.wait_for to handle optional messages while still sending frames
+            try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=0.01)
+                # print(f"Received: {data}")
+                try:
+                    message = json.loads(data)
+                    if "carousel_index" in message:
+                        # print("User is viewing image index:", message["carousel_index"])
+                        shared_dict["carousel_index"] = int(message["carousel_index"])
+                except json.JSONDecodeError:
+                    print("Invalid JSON:", data)
+            
+            except asyncio.TimeoutError:
+                pass  # No incoming message; continue sending frame
+
+            if shared_dict["frame"] is not None:
+                success, jpeg = cv2.imencode(".jpg", shared_dict["frame"])
+                
+                if success:
+                    await websocket.send_bytes(jpeg.tobytes())
+
+            await asyncio.sleep(0.05)  # ~20 FPS
+    except Exception as e:
+        print("WebSocket closed:", e)
+    
 
 @app.get("/leaderboard")
 def get_leaderboard(current_player: str = ""):
@@ -406,6 +506,7 @@ def save_score(request: SaveScoreRequest):
 #** Julien's Part (settings/debug) **#
 
 def run_game(args):
+    global shared_dict
     import main
 
     manager = Manager()
@@ -414,7 +515,9 @@ def run_game(args):
 
     main.start_game(shared_dict, args)
 
-def run_camera(config_file, shared_dict):
+def run_camera(config_file):
+    global shared_dict
+
     grid = Grid(30, 0.3)
     camera = Camera(config_file)
 
