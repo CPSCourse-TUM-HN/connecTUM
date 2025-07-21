@@ -2,6 +2,7 @@
 
 import {useState, useEffect} from "react";
 import styles from "./page.module.css";
+import yourTurnMessages from './yourTurnMessages.json';
 
 interface BoardResponse {
     board: number[][];
@@ -9,6 +10,8 @@ interface BoardResponse {
     turn: number;
     valid_moves: number[];
     scores?: number[];
+    final_score?: number;
+    move_message?: string;
 }
 
 interface MagazineStatus {
@@ -156,6 +159,8 @@ function GameScreen({
                         reset,
                         trainingMode,
                         goToStart,
+                        nickname,
+                        goToLeaderboard,
                     }: {
     state: BoardResponse;
     loading: boolean;
@@ -164,7 +169,41 @@ function GameScreen({
     reset: () => void;
     trainingMode: boolean;
     goToStart: () => void;
+    nickname: string;
+    goToLeaderboard: () => void;
 }) {
+    const [showMoveMessage, setShowMoveMessage] = useState(false);
+    const [currentYourTurnMessage, setCurrentYourTurnMessage] = useState('');
+
+    // Handle move message timer
+    useEffect(() => {
+        if (state.move_message && state.turn === 0) {
+            setShowMoveMessage(true);
+
+            // Clear the move message after 6 seconds and show "Your Turn" message
+            const timer = setTimeout(() => {
+                setShowMoveMessage(false);
+                // Pick a random "Your Turn" message
+                const randomMessage = yourTurnMessages[Math.floor(Math.random() * yourTurnMessages.length)];
+                setCurrentYourTurnMessage(randomMessage);
+            }, 6000);
+
+            return () => clearTimeout(timer);
+        } else if (state.turn === 0 && !state.move_message) {
+            // If it's player's turn but no move message, show random "Your Turn" message immediately
+            const randomMessage = yourTurnMessages[Math.floor(Math.random() * yourTurnMessages.length)];
+            setCurrentYourTurnMessage(randomMessage);
+        }
+    }, [state.move_message, state.turn]);
+
+    // Reset messages when it's not player's turn
+    useEffect(() => {
+        if (state.turn !== 0) {
+            setShowMoveMessage(false);
+            setCurrentYourTurnMessage('');
+        }
+    }, [state.turn]);
+
     return (
         <>
             <h1 style={{
@@ -176,59 +215,71 @@ function GameScreen({
                 color: '#f8fafc'
             }}>ConnecTUM</h1>
             {error && <div style={{color: "#f87171", marginBottom: 6}}>{error}</div>}
-            <div style={{
-                marginBottom: 2,
-                marginTop: 2,
-                fontSize: 18,
-                minHeight: 24,
-                color: '#f8fafc',
-                fontWeight: 600,
-                textAlign: 'center'
-            }}>
-                {state.winner !== null && (
-                    <span style={{marginLeft: 8}}>
-            <b>Winner:</b> {state.winner === -1 ? "Player" : state.winner === 1 ? "Bot" : state.winner === 0 ? "Draw" : ""}
-          </span>
-                )}
-            </div>
-            {trainingMode && state.scores && (
+
+            {state.winner !== null ? (
                 <div style={{
                     width: '100%',
                     color: '#f8fafc',
-                    fontSize: 16,
+                    fontSize: 20,
                     fontWeight: 700,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
                     textAlign: 'center',
-                    marginBottom: 8
+                    marginBottom: 12,
+                    padding: '12px',
+                    background: '#232946',
+                    borderRadius: 10,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    gap: 16
                 }}>
-                    <b>Impossible mode scores:</b>
-                    <div style={{
-                        display: "flex",
-                        gap: 4,
-                        marginTop: 2,
-                        justifyContent: 'center',
-                        flexWrap: 'wrap',
-                        fontWeight: 400,
-                        fontSize: 13
-                    }}>
-                        {state.scores.map((score: number, idx: number) => (
-                            <span key={idx} style={{
-                                display: 'inline-block',
-                                color: '#f8fafc',
-                                fontSize: 16,
-                                fontWeight: 700,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                textAlign: 'center',
-                                padding: '2px 8px',
-                                borderRadius: 6,
-                                background: '#232946'
-                            }}>{Math.round(score)}</span>
-                        ))}
+                    <div>
+                        <b>Winner:</b> {state.winner === -1 ? "Player" : state.winner === 1 ? "Bot" : state.winner === 0 ? "Draw" : ""}
                     </div>
+                    {state.final_score !== undefined && (
+                        <div>Your Score: {state.final_score}</div>
+                    )}
+                </div>
+            ) : (
+                <div style={{
+                    marginBottom: 2,
+                    marginTop: 2,
+                    fontSize: 18,
+                    minHeight: 48,
+                    color: '#f8fafc',
+                    fontWeight: 600,
+                    textAlign: 'center',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '8px 16px'
+                }}>
+                    {state.turn === 0 ? (
+                        // Show move message for 6 seconds, then show random "Your Turn" message
+                        showMoveMessage && state.move_message ? (
+                            <div style={{
+                                fontStyle: 'italic',
+                                fontSize: 16,
+                                lineHeight: '1.4',
+                                maxWidth: '400px',
+                                fontWeight: 400
+                            }}>
+                                {state.move_message}
+                            </div>
+                        ) : currentYourTurnMessage ? (
+                            <div style={{
+                                fontSize: 16,
+                                lineHeight: '1.4',
+                                maxWidth: '400px',
+                                fontWeight: 500,
+                                color: '#38bdf8'
+                            }}>
+                                {currentYourTurnMessage}
+                            </div>
+                        ) : "Your turn"
+                    ) : "Bot's turn"}
                 </div>
             )}
+
             <div style={{
                 display: "grid",
                 gridTemplateColumns: `repeat(${state.board[0].length}, 48px)`,
@@ -242,17 +293,17 @@ function GameScreen({
                 boxSizing: 'border-box',
                 justifyContent: 'center',
             }}>
-                {state.board.map((row, rowIdx) =>
+                {state.board.slice().reverse().map((row, rowIdx) =>
                     row.map((cell, colIdx) => (
                         <button
-                            key={`${rowIdx}-${colIdx}`}
+                            key={`${state.board.length - 1 - rowIdx}-${colIdx}`}
                             style={{
                                 width: 48,
                                 height: 48,
                                 borderRadius: "50%",
                                 background: cell === 0 ? "#e0e7ef" : cell === 1 ? "#f43f5e" : "#facc15",
-                                border: state.valid_moves.includes(colIdx) ? "2px solid #38bdf8" : "1px solid #64748b",
-                                cursor: state.valid_moves.includes(colIdx) && !loading && state.winner === null ? "pointer" : "default",
+                                border: (state.valid_moves.includes(colIdx) && state.turn === 0 && state.winner === null) ? "2px solid #38bdf8" : "1px solid #64748b",
+                                cursor: (state.valid_moves.includes(colIdx) && !loading && state.winner === null && state.turn === 0) ? "pointer" : "default",
                                 boxShadow: cell !== 0 ? '0 2px 8px #0002' : undefined,
                                 fontSize: 14,
                                 fontWeight: 700,
@@ -262,76 +313,252 @@ function GameScreen({
                                 margin: 0,
                                 padding: 0,
                             }}
-                            disabled={loading || !state.valid_moves.includes(colIdx) || state.winner !== null}
+                            disabled={loading || !state.valid_moves.includes(colIdx) || state.winner !== null || state.turn !== 0}
                             onClick={() => makeMove(colIdx)}
                             aria-label={`Drop in column ${colIdx + 1}`}
                         />
                     ))
                 )}
             </div>
-            <button onClick={reset} disabled={loading} style={{
-                width: '100%',
-                fontSize: 16,
-                marginTop: 8,
-                padding: '8px 0',
-                borderRadius: 8,
-                background: '#f59e42',
-                color: '#fff',
-                border: 'none',
-                fontWeight: 700,
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.7 : 1,
-                boxShadow: '0 2px 8px #0004'
-            }}>Reset Game
-            </button>
+
+            {/* Training Mode Score Display */}
+            {trainingMode && state.scores && (
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: `repeat(${state.board[0].length}, 48px)`,
+                    gap: 2,
+                    margin: '4px auto 0 auto',
+                    justifyContent: 'center',
+                }}>
+                    {state.scores.map((score, colIdx) => (
+                        <div
+                            key={colIdx}
+                            style={{
+                                width: 48,
+                                height: 24,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: state.valid_moves.includes(colIdx) ? '#f8fafc' : '#64748b',
+                                background: state.valid_moves.includes(colIdx) ? '#1e40af' : '#334155',
+                                borderRadius: 4,
+                                border: '1px solid #475569'
+                            }}
+                        >
+                            {state.valid_moves.includes(colIdx) ? score.toFixed(1) : '-'}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {state.winner !== null ? (
+                <div style={{display: 'flex', gap: 8, width: '100%', marginTop: 8}}>
+                    <button onClick={reset} disabled={loading} style={{
+                        flex: 1,
+                        fontSize: 16,
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        background: '#f59e42',
+                        color: '#fff',
+                        border: 'none',
+                        fontWeight: 700,
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.7 : 1,
+                        boxShadow: '0 2px 8px #0004'
+                    }}>New Game
+                    </button>
+                    <button onClick={goToLeaderboard} style={{
+                        flex: 1,
+                        fontSize: 16,
+                        padding: '8px 0',
+                        borderRadius: 8,
+                        background: '#38bdf8',
+                        color: '#fff',
+                        border: 'none',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px #0004'
+                    }}>Leaderboard
+                    </button>
+                </div>
+            ) : (
+                <button onClick={reset} disabled={loading} style={{
+                    width: '100%',
+                    fontSize: 16,
+                    marginTop: 8,
+                    padding: '8px 0',
+                    borderRadius: 8,
+                    background: '#f59e42',
+                    color: '#fff',
+                    border: 'none',
+                    fontWeight: 700,
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    opacity: loading ? 0.7 : 1,
+                    boxShadow: '0 2px 8px #0004'
+                }}>Reset Game
+                </button>
+            )}
         </>
     );
 }
 
-function LeaderboardScreen({goToStart}: { goToStart: () => void }) {
-    // Mock leaderboard data
-    const leaderboard = [
-        {name: "Alice", score: 120},
-        {name: "Bob", score: 110},
-        {name: "Carol", score: 100},
-    ];
+function LeaderboardScreen({goToStart, currentPlayer}: { goToStart: () => void, currentPlayer: string }) {
+    const [selectedDifficulty, setSelectedDifficulty] = useState('impossible');
+    const [leaderboard, setLeaderboard] = useState<{
+        difficulty: string,
+        top_10: {nickname: string, score: number}[],
+        current_player?: {rank: number, nickname: string, score: number},
+        available_difficulties: string[]
+    } | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchLeaderboard = async (difficulty: string) => {
+        setLoading(true);
+        try {
+            const response = await fetch(`${API_URL}/leaderboard?difficulty=${encodeURIComponent(difficulty)}&current_player=${encodeURIComponent(currentPlayer)}`);
+            if (response.ok) {
+                const data = await response.json();
+                setLeaderboard(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch leaderboard:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchLeaderboard(selectedDifficulty);
+    }, [selectedDifficulty, currentPlayer]);
+
+    const handleDifficultyChange = (difficulty: string) => {
+        setSelectedDifficulty(difficulty);
+    };
+
     return (
         <div style={{width: '100%', textAlign: 'center', color: '#f8fafc'}}>
             <h1 style={{
                 fontSize: 28,
                 fontWeight: 700,
-                margin: '8px 0 2px 0',
+                margin: '8px 0 16px 0',
                 textAlign: 'center',
                 letterSpacing: 2
             }}>Leaderboard</h1>
-            <table style={{
-                width: '80%',
-                margin: '0 auto',
-                background: '#232946',
-                borderRadius: 10,
-                color: '#f8fafc',
-                fontSize: 18
-            }}>
-                <thead>
-                <tr style={{fontWeight: 700}}>
-                    <th style={{padding: 8}}>Name</th>
-                    <th style={{padding: 8}}>Score</th>
-                </tr>
-                </thead>
-                <tbody>
-                {leaderboard.map((entry, idx) => (
-                    <tr key={idx}>
-                        <td style={{padding: 8}}>{entry.name}</td>
-                        <td style={{padding: 8}}>{entry.score}</td>
-                    </tr>
-                ))}
-                </tbody>
-            </table>
+
+            {/* Difficulty Selector */}
+            <div style={{marginBottom: 20}}>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: 8,
+                    flexWrap: 'wrap'
+                }}>
+                    {['easy', 'medium', 'hard', 'impossible'].map((difficulty) => (
+                        <button
+                            key={difficulty}
+                            onClick={() => handleDifficultyChange(difficulty)}
+                            style={{
+                                padding: '8px 16px',
+                                borderRadius: 8,
+                                border: 'none',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                textTransform: 'capitalize',
+                                backgroundColor: selectedDifficulty === difficulty ? '#3b82f6' : '#475569',
+                                color: '#f8fafc',
+                                transition: 'background-color 0.2s'
+                            }}
+                        >
+                            {difficulty}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {loading ? (
+                <div style={{fontSize: 18, margin: '32px 0'}}>Loading...</div>
+            ) : !leaderboard || leaderboard.top_10.length === 0 ? (
+                <div style={{fontSize: 18, margin: '32px 0'}}>No scores yet for {selectedDifficulty} difficulty!</div>
+            ) : (
+                <>
+                    <div style={{
+                        width: '90%',
+                        margin: '0 auto',
+                        background: '#232946',
+                        borderRadius: 10,
+                        overflow: 'hidden'
+                    }}>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '60px 1fr 100px',
+                            gap: 16,
+                            padding: '16px',
+                            fontWeight: 700,
+                            fontSize: 16,
+                            borderBottom: '1px solid #475569'
+                        }}>
+                            <div>Rank</div>
+                            <div>Name</div>
+                            <div>Score</div>
+                        </div>
+                        {leaderboard.top_10.map((entry, idx) => (
+                            <div key={idx} style={{
+                                display: 'grid',
+                                gridTemplateColumns: '60px 1fr 100px',
+                                gap: 16,
+                                padding: '12px 16px',
+                                fontSize: 16,
+                                borderBottom: idx < leaderboard.top_10.length - 1 ? '1px solid #334155' : 'none',
+                                backgroundColor: entry.nickname === currentPlayer ? '#1e40af20' : 'transparent'
+                            }}>
+                                <div style={{fontWeight: 600}}>#{idx + 1}</div>
+                                <div style={{textAlign: 'left'}}>{entry.nickname}</div>
+                                <div style={{fontWeight: 600}}>{entry.score}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {leaderboard.current_player && (
+                        <>
+                            <div style={{
+                                margin: '16px 0 8px 0',
+                                fontSize: 16,
+                                color: '#cbd5e1'
+                            }}>
+                                Your Ranking in {selectedDifficulty}:
+                            </div>
+                            <div style={{
+                                width: '90%',
+                                margin: '0 auto',
+                                background: '#1e40af',
+                                borderRadius: 10,
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: '60px 1fr 100px',
+                                    gap: 16,
+                                    padding: '12px 16px',
+                                    fontSize: 16,
+                                    fontWeight: 600
+                                }}>
+                                    <div>#{leaderboard.current_player.rank}</div>
+                                    <div style={{textAlign: 'left'}}>{leaderboard.current_player.nickname}</div>
+                                    <div>{leaderboard.current_player.score}</div>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </>
+            )}
+
             <button onClick={goToStart} style={{
                 width: '80%',
                 fontSize: 16,
-                marginTop: 16,
-                padding: '8px 0',
+                marginTop: 24,
+                padding: '12px 0',
                 borderRadius: 8,
                 background: '#64748b',
                 color: '#fff',
@@ -455,31 +682,94 @@ function ErrorDialog({
 
 function MagazineStatusComponent() {
     const [magazineStatus, setMagazineStatus] = useState<MagazineStatus | null>(null);
+    const [wsConnected, setWsConnected] = useState(false);
+    const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
     useEffect(() => {
-        const fetchMagazineStatus = async () => {
+        let reconnectTimer: NodeJS.Timeout;
+        let ws: WebSocket | null = null;
+
+        const connectWebSocket = () => {
             try {
-                const res = await fetch(`${API_URL}/magazine-status`);
-                if (res.ok) {
-                    setMagazineStatus(await res.json());
-                }
+                ws = new WebSocket(`ws://localhost:8000/ws/magazine-status`);
+
+                ws.onopen = () => {
+                    console.log("Magazine status WebSocket connected");
+                    setWsConnected(true);
+                    setReconnectAttempts(0);
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const status = JSON.parse(event.data);
+                        setMagazineStatus(status);
+                    } catch (error) {
+                        console.error("Failed to parse magazine status:", error);
+                    }
+                };
+
+                ws.onclose = (event) => {
+                    console.log("Magazine status WebSocket disconnected", event.code, event.reason);
+                    setWsConnected(false);
+
+                    // Only attempt to reconnect if it wasn't a manual close
+                    if (event.code !== 1000) {
+                        setReconnectAttempts(prev => prev + 1);
+                        // Exponential backoff with max 10 seconds
+                        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 10000);
+                        console.log(`Attempting to reconnect in ${delay}ms...`);
+                        reconnectTimer = setTimeout(connectWebSocket, delay);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error("Magazine status WebSocket error:", error);
+                    setWsConnected(false);
+                };
             } catch (error) {
-                console.error("Failed to fetch magazine status:", error);
+                console.error("Failed to create WebSocket:", error);
+                setWsConnected(false);
+                // Retry after 5 seconds if WebSocket creation fails
+                reconnectTimer = setTimeout(connectWebSocket, 5000);
             }
         };
 
-        fetchMagazineStatus();
-        // Poll magazine status every 5 seconds
-        const interval = setInterval(fetchMagazineStatus, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        // Only connect if we're in a browser environment
+        if (typeof window !== 'undefined') {
+            connectWebSocket();
+        }
 
-    if (!magazineStatus) return null;
+        return () => {
+            if (reconnectTimer) {
+                clearTimeout(reconnectTimer);
+            }
+            if (ws) {
+                ws.close(1000, 'Component unmounting');
+            }
+        };
+    }, [reconnectAttempts]);
+
+    // Don't render anything if we don't have status yet
+    if (!magazineStatus && !wsConnected) {
+        return (
+            <div style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 12,
+                color: '#64748b',
+                fontSize: 12
+            }}>
+                Connecting to system...
+            </div>
+        );
+    }
 
     return (
         <div style={{display: 'flex', gap: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12}}>
             <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                {magazineStatus.magazine1_full ?
+                {magazineStatus?.magazine1_full ?
                     <img
                         src="/green_coins.png"
                         alt="Green coins magazine 1"
@@ -491,7 +781,7 @@ function MagazineStatusComponent() {
                         style={{width: 32, height: 32}}
                     />
                 }
-                {magazineStatus.magazine2_full ? <img
+                {magazineStatus?.magazine2_full ? <img
                         src="/green_coins.png"
                         alt="Green coins magazine 2"
                         style={{width: 32, height: 32}}
@@ -502,6 +792,15 @@ function MagazineStatusComponent() {
                         style={{width: 32, height: 32}}
                     />}
             </div>
+            {!wsConnected && (
+                <div style={{
+                    fontSize: 12,
+                    color: '#ef4444',
+                    marginLeft: 8
+                }}>
+                    System offline
+                </div>
+            )}
         </div>
     );
 }
@@ -539,7 +838,12 @@ export default function Home() {
             const res = await fetch(`${API_URL}/start`, {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({difficulty, who_starts: whoStarts, training_mode: trainingMode}),
+                body: JSON.stringify({
+                    difficulty,
+                    who_starts: whoStarts,
+                    training_mode: trainingMode,
+                    nickname: nickname.trim()
+                }),
             });
 
             if (!res.ok) {
@@ -684,10 +988,12 @@ export default function Home() {
                             reset={reset}
                             trainingMode={trainingMode}
                             goToStart={goToStart}
+                            nickname={nickname}
+                            goToLeaderboard={goToLeaderboard}
                         />
                     )}
                     {screen === 'leaderboard' && (
-                        <LeaderboardScreen goToStart={goToStart}/>
+                        <LeaderboardScreen goToStart={goToStart} currentPlayer={nickname.trim()}/>
                     )}
                 </main>
             </div>
