@@ -115,12 +115,10 @@ class SaveScoreRequest(BaseModel):
     score: int
 
 def run_game(args):
+    global shared_dict
     import main
 
-    manager = Manager()
-    shared_dict = manager.dict()
     shared_dict["frame"] = None
-
     main.start_game(shared_dict, args)
 
 def run_camera(config_file):
@@ -133,12 +131,14 @@ def run_camera(config_file):
 
 @app.post("/new_game")
 def new_game(option: StartGameRequest):
+    global game_process
+
     args = argparse.Namespace(
         CONFIG_FILE="config/picam.yaml",
         level=['impossible'],
         bot_first=False,
         t=False,
-        no_camera=True,
+        no_camera=False,
         no_motors=True,
         no_print=False
     )
@@ -150,18 +150,21 @@ def new_game(option: StartGameRequest):
 
 @app.post("/start_camera")
 def start_camera(config: StartCameraRequest):
-    global shared_dict
+    global camera_process
 
     if config.file_path not in ["config/default.yaml", "config/picam.yaml"]:
         return {"error": "The file path provided is not correct"}
     
-    camera_process = mp.Process(target=run_camera, args=(config.file_path, shared_dict))
+    camera_process = mp.Process(target=run_camera, args=(config.file_path, ))
     camera_process.start()
 
     return {"status": "camera started"}
 
 @app.get("/kill_camera")
 def kill_camera():
+    print("in kill camera")
+    global camera_process
+
     if camera_process is None:
         return JSONResponse({"error": "There is no camera initialized"})
     
