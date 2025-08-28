@@ -81,3 +81,9 @@ Both color (red and yellow) have a lower and upper range each composed of tree v
 By experience it is better to first find the hue range to make the color *appear* and then tweak the saturation and value sliders to reduce the noice and get a cleaner detection.
 
 Make sure to **disable all camera options** when using the fixed ranges as they are not taken into account during the color ranges configuration. Those should be use in very specific conditions (e.g. slight changes in light conditions).
+
+## Presentation Links
+
+- [Project Final Presentation](https://tum.de)
+- [Project Final Report](https://tum.de)
+- [Project Demo Video](https://tum.de)
