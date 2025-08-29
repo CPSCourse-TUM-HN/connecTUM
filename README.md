@@ -84,6 +84,10 @@ Make sure to **disable all camera options** when using the fixed ranges as they 
 
 ## Presentation Links
 
-- [Project Final Presentation](https://tum.de)
+- [Project Final Presentation](https://github.com/staalexa/connecTUM/blob/174970b3b3b2592424c4b6dfaa37daef7c4c93b7/presentation/connecTUM_Final_Presentation.pdf)
 - [Project Final Report](https://tum.de)
 - [Project Demo Video (TUM Account needed)](https://tumde-my.sharepoint.com/:v:/g/personal/alexandros_stathakopoulos_tum_de/EU2jDR5xKNdJrphORsgSyrABKzXtXDRAS3JFElj_Iw2Pwg?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=bXy3cD)
+
+## Remarks
+
+due to GitHub's repo size issue, our precomputed lookup tables for the game's algorithm are not included in the repository. Therefore, the algorithm will run slower as demonstrated. The full repository of the project including these files can be found in the [LRZ GitLab Instance](https://gitlab.lrz.de/00000000014BAEC1/connectum).
