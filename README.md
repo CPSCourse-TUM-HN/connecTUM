@@ -26,7 +26,8 @@ pip install -r requirements.txt
 ## Usage
 
 ```text
-usage: main.py [-h] [-l {easy,medium,hard,impossible}] [-b] [-t] [--no-camera] [--no-motors] [--no-gui] [CONFIG_FILE]
+usage: main.py [-h] [-l {easy,medium,hard,impossible}] [-b] [-t] [--no-camera] [--no-motors] [--no-print]
+               [CONFIG_FILE]
 
 positional arguments:
   CONFIG_FILE           Path to a configuration file for the camera
@@ -39,7 +40,7 @@ options:
   -t                    Play a game only in the terminal (equivalent to: --no-camera --no-motors)
   --no-camera           Play a game using the terminal instead of the camera
   --no-motors           Play a game without moving the motors
-  --no-gui              Play a game without starting the WebApp server
+  --no-print            Play a game without printing the board in the terminal
 ```
 
 ### Graphic Interface
