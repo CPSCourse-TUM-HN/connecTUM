@@ -91,4 +91,9 @@ Make sure to **disable all camera options** when using the fixed ranges as they 
 
 ## Remarks
 
-due to GitHub's repo size issue, our precomputed lookup tables for the game's algorithm are not included in the repository. Therefore, the algorithm will run slower as demonstrated. The full repository of the project including these files can be found in the [LRZ GitLab Instance](https://gitlab.lrz.de/00000000014BAEC1/connectum).
+Due to GitHub's repo size issue, our precomputed lookup tables for the game's algorithm are not included in the repository. Therefore, the algorithm will run slower as demonstrated. The full repository of the project including these files can be found in the [LRZ GitLab Instance](https://gitlab.lrz.de/00000000014BAEC1/connectum).
+
+## Acknoledgement 
+
+The algorithm used to compute the Connect4 moves is largely based on work of Pascal Pons: [ https://github.com/PascalPons/connect4]( https://github.com/PascalPons/connect4)
+
