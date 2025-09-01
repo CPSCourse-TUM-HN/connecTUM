@@ -86,7 +86,7 @@ Make sure to **disable all camera options** when using the fixed ranges as they 
 ## Presentation Links
 
 - [Project Final Presentation](https://github.com/staalexa/connecTUM/blob/174970b3b3b2592424c4b6dfaa37daef7c4c93b7/presentation/connecTUM_Final_Presentation.pdf)
-- [Project Final Report](https://tum.de)
+- [Project Final Report](https://github.com/CPSCourse-TUM-HN/connecTUM/blob/4372ee0929d48b7e9c4d39c8bf49b3ce2c584059/presentation/connecTUM_Final_Report.pdf)
 - [Project Demo Video (TUM Account needed)](https://tumde-my.sharepoint.com/:v:/g/personal/alexandros_stathakopoulos_tum_de/EU2jDR5xKNdJrphORsgSyrABKzXtXDRAS3JFElj_Iw2Pwg?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=bXy3cD)
 
 ## Remarks
